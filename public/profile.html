@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>پروفایل من · Roof</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <a class="brand" href="/">
+        <span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#EFEAE4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5L12 5l8 7.5"/><path d="M6.5 10.7V19h11v-8.3"/></svg></span>
+        <span class="brand-text"><span class="brand-word">Roof</span><span class="brand-sub">پروفایل من</span></span>
+      </a>
+      <nav class="nav"><a href="/">رزرو جدید</a><button id="logout" class="ghost-btn">خروج</button></nav>
+    </header>
+
+    <section class="page-head">
+      <span class="eyebrow">ورود با کد یک‌بارمصرف</span>
+      <h2>رزروهای من</h2>
+    </section>
+
+    <section class="grid">
+      <aside class="card card-pad">
+        <h3>ورود / ثبت‌نام</h3>
+        <div class="form-grid">
+          <div class="field"><label>شماره موبایل</label><input id="phone" placeholder="09..."></div>
+          <button id="sendOtp" class="secondary-btn">ارسال کد</button>
+          <div class="row">
+            <div class="field"><label>کد تایید</label><input id="code" inputmode="numeric"></div>
+            <div class="field"><label>نام (اختیاری)</label><input id="name"></div>
+          </div>
+          <button id="verifyOtp" class="primary-btn">تایید و ورود</button>
+          <div id="loginNotice"></div>
+        </div>
+      </aside>
+
+      <section class="card card-pad">
+        <h3>لیست رزروها</h3>
+        <div id="profileBox" class="skeleton" style="height:80px"></div>
+      </section>
+    </section>
+  </main>
+  <script type="module" src="/js/profile.js"></script>
+</body>
+</html>

@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>رزرو میز · Roof</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Estedad:wght@200..900&family=Lora:ital,wght@0,400..700;1,400..700&display=swap"
+    rel="stylesheet">
+    <style>
+      :root {
+        --font-fa: 'Estedad', Tahoma, sans-serif;
+      }
+    </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <a class="brand" href="/">
+        <span class="brand-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#EFEAE4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5L12 5l8 7.5"/><path d="M6.5 10.7V19h11v-8.3"/></svg>
+        </span>
+        <span class="brand-text"><span class="brand-word">Roof</span><span class="brand-sub">رزرو میز با نقشه تعاملی</span></span>
+      </a>
+      <nav class="nav">
+        <a href="/profile.html">پروفایل</a>
+        <a href="/track.html">پیگیری رزرو</a>
+      </nav>
+    </header>
+
+    <section class="page-head">
+      <span class="eyebrow">نقشه فرضی — به‌زودی با پلان واقعی جایگزین می‌شود</span>
+      <h2>یک میز آرام برات نگه می‌داریم</h2>
+      <p class="lede">تاریخ، تعداد نفرات، ساعت یا بازه‌ی زمانی رو انتخاب کن؛ میزهای قابل رزرو همون لحظه روی نقشه روشن می‌شن.</p>
+    </section>
+
+    <section class="grid">
+      <aside class="card card-pad">
+        <h3>جزئیات رزرو</h3>
+        <form id="searchForm" class="form-grid">
+          <div class="field">
+            <label>تاریخ</label>
+            <div id="dateRow" class="date-row"></div>
+          </div>
+          <div class="row">
+            <div class="field">
+              <label>تعداد نفرات</label>
+              <div class="stepper">
+                <button type="button" data-step="-1" aria-label="کم کردن">−</button>
+                <input id="guestCount" type="number" inputmode="numeric" min="1" max="20" value="2">
+                <button type="button" data-step="1" aria-label="زیاد کردن">+</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>مدت رزرو</label>
+              <div id="durationRow" class="chip-row"></div>
+            </div>
+          </div>
+          <div class="field">
+            <label>نوع زمان</label>
+            <div class="mode-tabs">
+              <button type="button" data-mode="exact" class="active">ساعت دقیق</button>
+              <button type="button" data-mode="range">بازه زمانی</button>
+            </div>
+          </div>
+          <div id="exactBox" class="row">
+            <div class="field"><label>ساعت شروع</label><input id="startTime" type="time" value="15:00" step="900"></div>
+          </div>
+          <div id="rangeBox" class="row" style="display:none">
+            <div class="field"><label>از ساعت</label><input id="rangeStart" type="time" value="15:00" step="900"></div>
+            <div class="field"><label>تا ساعت</label><input id="rangeEnd" type="time" value="17:00" step="900"></div>
+          </div>
+          <button class="primary-btn" type="submit">بررسی میزهای آزاد</button>
+        </form>
+        <div id="searchNotice"></div>
+      </aside>
+
+      <section class="card map-card">
+        <div class="map-toolbar">
+          <h3 style="margin:0">نقشه رزرو</h3>
+          <div class="legend">
+            <span><i class="dot perfect"></i> مناسب دقیق</span>
+            <span><i class="dot soft"></i> ظرفیت بیشتر</span>
+            <span><i class="dot reserved"></i> غیرقابل رزرو</span>
+            <span><i class="dot selected"></i> انتخاب شده</span>
+          </div>
+        </div>
+        <div class="map-wrap" id="mapWrap">
+          <svg id="floorMap" viewBox="0 0 940 610" role="img" aria-label="نقشه فرضی کافه"></svg>
+          <div id="bubbleLayer"></div>
+        </div>
+        <div id="comboPanel" class="table-detail" style="display:none;margin-top:14px">
+          <h4>پیشنهادهای ترکیبی</h4>
+          <div id="comboList" class="combo-list"></div>
+        </div>
+        <div class="side-panel" id="sidePanel">
+          <div id="selectedDetail" class="table-detail"><h4>میزی انتخاب نشده</h4><p>روی یک میز سبز روی نقشه ضربه بزن.</p></div>
+        </div>
+
+      </section>
+    </section>
+  </main>
+
+  <div id="reserveModal" class="modal">
+    <div class="modal-content">
+      <h3>تکمیل رزرو</h3>
+      <div id="modalSummary" class="notice"></div>
+      <form id="reserveForm" class="form-grid" style="margin-top:14px">
+        <div class="row">
+          <div class="field"><label>نام</label><input id="customerName" required placeholder="نام و نام خانوادگی"></div>
+          <div class="field"><label>موبایل</label><input id="customerPhone" required placeholder="09..."></div>
+        </div>
+        <div class="actions">
+          <button class="secondary-btn" type="button" id="closeModal">برگشت</button>
+          <button class="primary-btn" type="submit">ثبت موقت و رفتن به پرداخت</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module" src="/js/reservation.js"></script>
+</body>
+</html>

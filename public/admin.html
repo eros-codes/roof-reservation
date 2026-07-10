@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>پنل ادمین · Roof</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <a class="brand" href="/">
+        <span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#EFEAE4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5L12 5l8 7.5"/><path d="M6.5 10.7V19h11v-8.3"/></svg></span>
+        <span class="brand-text"><span class="brand-word">Roof</span><span class="brand-sub" id="adminInfo">در حال بارگذاری...</span></span>
+      </a>
+      <nav class="nav"><a href="/">سایت</a><button id="adminLogout" class="ghost-btn">خروج</button></nav>
+    </header>
+
+    <section class="admin-layout" style="margin-top:22px">
+      <nav class="admin-menu" id="adminMenu"></nav>
+      <section class="card card-pad">
+        <div id="dashboard" class="admin-section active"><h3>داشبورد امروز</h3><div id="dashboardBox" class="kpi-grid"></div></div>
+        <div id="reservations" class="admin-section"><h3>رزروها</h3><div id="reservationBox"></div></div>
+        <div id="manual" class="admin-section">
+          <h3>ثبت رزرو دستی<span class="hint">این رزرو بلافاصله تایید‌شده و پرداخت‌شده ثبت می‌شود.</span></h3>
+          <div class="form-grid">
+            <div class="row">
+              <div class="field"><label>نام مشتری</label><input id="mName" placeholder="نام و نام خانوادگی"></div>
+              <div class="field"><label>موبایل</label><input id="mPhone" placeholder="09..."></div>
+            </div>
+            <div class="row">
+              <div class="field"><label>تاریخ</label><input id="mDate" type="date"></div>
+              <div class="field"><label>ساعت شروع</label><input id="mTime" type="time" value="15:00" step="900"></div>
+            </div>
+            <div class="row">
+              <div class="field"><label>تعداد نفرات</label>
+                <div class="stepper"><button type="button" data-mstep="-1">−</button><input id="mGuests" type="number" value="2" min="1"><button type="button" data-mstep="1">+</button></div>
+              </div>
+              <div class="field"><label>مدت رزرو</label><div id="mDurationRow" class="chip-row"></div></div>
+            </div>
+            <div class="field"><label>میز (برای ترکیبی، بیش از یکی انتخاب کن)</label><div id="mTables" class="chip-row"></div></div>
+            <button id="createManual" class="primary-btn">ثبت رزرو دستی</button>
+            <div id="manualNotice"></div>
+          </div>
+        </div>
+        <div id="tables" class="admin-section"><h3>مدیریت میزها</h3><div id="tableBox"></div></div>
+        <div id="hours" class="admin-section"><h3>ساعت کاری</h3><div id="hoursBox"></div></div>
+        <div id="closures" class="admin-section"><h3>تعطیلی‌ها و بلاک‌ها</h3><div id="closuresBox"></div></div>
+        <div id="settings" class="admin-section"><h3>قیمت و تنظیمات</h3><div id="settingsBox"></div></div>
+        <div id="reports" class="admin-section"><h3>گزارش‌ها</h3><div id="reportsBox" class="kpi-grid"></div></div>
+      </section>
+    </section>
+  </main>
+  <script type="module" src="/js/admin.js"></script>
+</body>
+</html>
