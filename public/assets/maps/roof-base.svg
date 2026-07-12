@@ -1,0 +1,252 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 900" role="img" aria-labelledby="roofMapTitle roofMapDesc" preserveAspectRatio="xMidYMid meet">
+  <title id="roofMapTitle">نقشه تعاملی کافه روف</title>
+  <desc id="roofMapDesc">سه فضای سالن پنجره، سالن وسط و روف گاردن با ورودی‌ها، پله، بار، صندوق، مبلمان ثابت و فضای سبز.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f3eee8"/>
+      <stop offset="1" stop-color="#c8beb0"/>
+    </linearGradient>
+    <linearGradient id="floor-window" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e8e0d6"/>
+      <stop offset="1" stop-color="#c8beb1"/>
+    </linearGradient>
+    <linearGradient id="floor-center" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ded4c7"/>
+      <stop offset="1" stop-color="#b8ab9c"/>
+    </linearGradient>
+    <linearGradient id="floor-roof" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#d9d0c4"/>
+      <stop offset="1" stop-color="#b5a89a"/>
+    </linearGradient>
+    <linearGradient id="wall-top" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6f1eb"/>
+      <stop offset="1" stop-color="#d8cec2"/>
+    </linearGradient>
+    <linearGradient id="wall-side" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8b7d70"/>
+      <stop offset="1" stop-color="#66584f"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8f5f0" stop-opacity=".82"/>
+      <stop offset=".45" stop-color="#cfd3cf" stop-opacity=".48"/>
+      <stop offset="1" stop-color="#91897f" stop-opacity=".56"/>
+    </linearGradient>
+    <linearGradient id="plant" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#82916b"/>
+      <stop offset="1" stop-color="#526044"/>
+    </linearGradient>
+    <linearGradient id="sofa" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f1ece6"/>
+      <stop offset="1" stop-color="#c9beb1"/>
+    </linearGradient>
+    <linearGradient id="bar" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5f4a49"/>
+      <stop offset="1" stop-color="#2d2224"/>
+    </linearGradient>
+    <pattern id="tile-grid" width="44" height="44" patternUnits="userSpaceOnUse">
+      <path d="M44 0H0V44" fill="none" stroke="#4f403f" stroke-opacity=".055" stroke-width="1"/>
+    </pattern>
+    <pattern id="stone" width="52" height="42" patternUnits="userSpaceOnUse">
+      <rect width="52" height="42" fill="#756b62"/>
+      <path d="M2 8l17-6 13 8 18-5M-3 26l15-8 15 9 17-8 12 6M6 42l11-10 16 7 14-8" fill="none" stroke="#a99e92" stroke-opacity=".58" stroke-width="2"/>
+    </pattern>
+    <pattern id="pergola" width="54" height="54" patternUnits="userSpaceOnUse" patternTransform="rotate(-5)">
+      <rect width="54" height="54" fill="transparent"/>
+      <rect x="4" y="0" width="8" height="54" rx="4" fill="#4b3b3c" fill-opacity=".13"/>
+    </pattern>
+    <filter id="soft-shadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="12" stdDeviation="12" flood-color="#1f1516" flood-opacity=".16"/>
+    </filter>
+    <filter id="small-shadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#1f1516" flood-opacity=".18"/>
+    </filter>
+    <filter id="plant-shadow" x="-60%" y="-60%" width="220%" height="220%">
+      <feDropShadow dx="0" dy="6" stdDeviation="5" flood-color="#1f1516" flood-opacity=".2"/>
+    </filter>
+    <clipPath id="window-clip"><path d="M42 78H548V846H18L76 78Z"/></clipPath>
+    <clipPath id="center-clip"><path d="M540 78H1185V846H540Z"/></clipPath>
+    <clipPath id="roof-clip"><path d="M1175 78H1778V846H1175Z"/></clipPath>
+    <symbol id="plant-small" viewBox="-20 -20 40 40">
+      <ellipse cx="0" cy="8" rx="11" ry="7" fill="#4d443f" fill-opacity=".33"/>
+      <path d="M0 8C-2-2-12-11-13-18M0 8C2-3 10-12 10-19M0 7C-7 0-15-2-19-9M1 7C8 1 14-1 19-8M0 5C0-4-2-12 2-19" fill="none" stroke="url(#plant)" stroke-width="3" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="plant-tall" viewBox="-28 -52 56 70">
+      <ellipse cx="0" cy="9" rx="16" ry="10" fill="#4c403d" fill-opacity=".28"/>
+      <path d="M0 8C-4-8-13-27-10-48M0 8C4-9 13-29 10-51M0 5C-14-8-21-21-22-38M1 5C14-8 22-21 22-41M-1 3C-4-10 1-28 0-46" fill="none" stroke="url(#plant)" stroke-width="5" stroke-linecap="round"/>
+    </symbol>
+    <style>
+      .map-static{pointer-events:none}.floor-label{font-family:Estedad,Tahoma,sans-serif;font-size:18px;font-weight:700;fill:#422e2f;letter-spacing:.02em}.floor-sub{font-family:Estedad,Tahoma,sans-serif;font-size:11px;fill:#6d5f54}.architectural-line{fill:none;stroke:#6d5f54;stroke-opacity:.42;stroke-width:2}.wall-edge{stroke:#422e2f;stroke-opacity:.2;stroke-width:1.5}.landmark-label{font-family:Estedad,Tahoma,sans-serif;font-size:12px;font-weight:650;fill:#efeae4}.micro-label{font-family:Estedad,Tahoma,sans-serif;font-size:10px;fill:#6d5f54}.window-glint{animation:windowGlint 7s ease-in-out infinite}.plant-breathe{animation:plantBreathe 5.8s ease-in-out infinite}.plant-breathe:nth-child(2n){animation-delay:-2.8s}@keyframes windowGlint{0%,100%{opacity:.35}50%{opacity:.8}}@keyframes plantBreathe{0%,100%{opacity:.88}50%{opacity:1}}@media(prefers-reduced-motion:reduce){.window-glint,.plant-breathe{animation:none}}
+    </style>
+  </defs>
+
+  <rect width="1800" height="900" fill="url(#bg)"/>
+  <path d="M28 64H1784V856H16Z" fill="#1f1516" fill-opacity=".035"/>
+
+  <g id="architecture-layer" class="map-static">
+    <!-- floor plates -->
+    <path d="M42 78H548V846H18L76 78Z" fill="url(#floor-window)" stroke="#422e2f" stroke-opacity=".17" stroke-width="2"/>
+    <path d="M540 78H1185V846H540Z" fill="url(#floor-center)" stroke="#422e2f" stroke-opacity=".17" stroke-width="2"/>
+    <path d="M1175 78H1778V846H1175Z" fill="url(#floor-roof)" stroke="#422e2f" stroke-opacity=".17" stroke-width="2"/>
+    <path d="M42 78H548V846H18L76 78Z" fill="url(#tile-grid)" clip-path="url(#window-clip)"/>
+    <path d="M540 78H1185V846H540Z" fill="url(#tile-grid)" clip-path="url(#center-clip)"/>
+    <path d="M1175 78H1778V846H1175Z" fill="url(#tile-grid)" clip-path="url(#roof-clip)"/>
+    <path d="M1175 78H1778V846H1175Z" fill="url(#pergola)" clip-path="url(#roof-clip)" opacity=".36"/>
+
+    <!-- 2.5D wall extrusions -->
+    <path d="M42 78H548V92H45L20 846H18Z" fill="url(#wall-side)" opacity=".72"/>
+    <path d="M540 78H1185V92H540Z" fill="url(#wall-side)" opacity=".72"/>
+    <path d="M1175 78H1778V92H1175Z" fill="url(#wall-side)" opacity=".72"/>
+    <path d="M548 78H560V846H548Z" fill="url(#wall-side)" opacity=".64"/>
+    <path d="M1185 78H1198V846H1185Z" fill="url(#wall-side)" opacity=".64"/>
+    <path d="M1778 78H1790V846H1778Z" fill="url(#wall-side)" opacity=".64"/>
+    <path d="M18 846H548V858H18Z" fill="#5f5149" fill-opacity=".64"/>
+    <path d="M540 846H1185V858H540Z" fill="#5f5149" fill-opacity=".64"/>
+    <path d="M1175 846H1778V858H1175Z" fill="#5f5149" fill-opacity=".64"/>
+
+    <!-- zone plaques -->
+    <g transform="translate(340 103)">
+      <rect x="-75" y="-18" width="150" height="36" rx="4" fill="#efeae4" fill-opacity=".88" stroke="#422e2f" stroke-opacity=".12"/>
+      <text class="floor-label" text-anchor="middle" dominant-baseline="middle">سالن پنجره</text>
+    </g>
+    <g transform="translate(980 103)">
+      <rect x="-66" y="-18" width="132" height="36" rx="4" fill="#efeae4" fill-opacity=".88" stroke="#422e2f" stroke-opacity=".12"/>
+      <text class="floor-label" text-anchor="middle" dominant-baseline="middle">سالن وسط</text>
+    </g>
+    <g transform="translate(1475 103)">
+      <rect x="-72" y="-18" width="144" height="36" rx="4" fill="#efeae4" fill-opacity=".88" stroke="#422e2f" stroke-opacity=".12"/>
+      <text class="floor-label" text-anchor="middle" dominant-baseline="middle">روف گاردن</text>
+    </g>
+
+    <!-- slanted glazing in window hall -->
+    <g>
+      <path d="M77 92L22 833" stroke="#3f3534" stroke-width="18" stroke-linecap="round" opacity=".22"/>
+      <path d="M79 92L24 833" stroke="url(#glass)" stroke-width="12" stroke-linecap="round"/>
+      <path class="window-glint" d="M76 115L28 790" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".55"/>
+      <path d="M72 178l-10 8M66 272l-10 8M59 366l-10 8M52 460l-10 8M45 554l-10 8M38 648l-10 8M31 742l-10 8" stroke="#5f5149" stroke-width="3" opacity=".42"/>
+    </g>
+    <g class="plant-breathe" transform="translate(55 185)"><use href="#plant-small" width="36" height="36" x="-18" y="-18"/></g>
+    <g class="plant-breathe" transform="translate(49 380)"><use href="#plant-tall" width="48" height="66" x="-24" y="-49"/></g>
+    <g class="plant-breathe" transform="translate(35 600)"><use href="#plant-small" width="36" height="36" x="-18" y="-18"/></g>
+
+    <!-- L sofa in window hall -->
+    <g>
+      <path d="M58 813H420V698H448V841H58Z" fill="#6d5f54" fill-opacity=".18"/>
+      <path d="M52 800H404V686H432V828H52Z" fill="url(#sofa)" stroke="#422e2f" stroke-opacity=".18"/>
+      <path d="M60 776H394M107 776v24M161 776v24M215 776v24M269 776v24M323 776v24M378 776v24" class="architectural-line" opacity=".42"/>
+      <path d="M408 695v122M408 730h24M408 772h24" class="architectural-line" opacity=".42"/>
+      <text class="micro-label" x="218" y="820" text-anchor="middle">مبل سرتاسری</text>
+    </g>
+
+    <!-- stone arch and major planters -->
+    <g transform="translate(480 600)">
+      <path d="M-38 72V-28C-38-68 38-68 38-28V72H10V-24C10-42-10-42-10-24V72Z" fill="url(#stone)" stroke="#422e2f" stroke-opacity=".22"/>
+      <path d="M-10 72V-24C-10-42 10-42 10-24V72" fill="#1f1516" fill-opacity=".08"/>
+    </g>
+    <g class="plant-breathe" transform="translate(475 700)"><use href="#plant-tall" width="58" height="76" x="-29" y="-56"/></g>
+    <g class="plant-breathe" transform="translate(445 270)"><use href="#plant-tall" width="50" height="70" x="-25" y="-52"/></g>
+
+    <!-- open roof void / recessed area -->
+    <g>
+      <rect x="558" y="108" width="300" height="220" rx="4" fill="#2f2527" fill-opacity=".18" stroke="#422e2f" stroke-opacity=".18"/>
+      <rect x="570" y="120" width="276" height="196" rx="2" fill="#1f1516" fill-opacity=".075" stroke="#efeae4" stroke-opacity=".34"/>
+      <text class="floor-label" x="708" y="198" text-anchor="middle" opacity=".65">فضای باز روف</text>
+      <text class="floor-sub" x="708" y="224" text-anchor="middle">فضای غیرقابل رزرو</text>
+    </g>
+
+    <!-- main entrance -->
+    <g transform="translate(910 78)">
+      <path d="M-62 0H62" stroke="#efeae4" stroke-width="14"/>
+      <path d="M-50 0V42M50 0V42" stroke="#6d5f54" stroke-width="4"/>
+      <path d="M-50 40Q0 88 50 40" fill="none" stroke="#6d5f54" stroke-opacity=".55" stroke-width="2" stroke-dasharray="5 5"/>
+      <path d="M0 15v54m0 0-12-14m12 14 12-14" fill="none" stroke="#422e2f" stroke-opacity=".55" stroke-width="2"/>
+      <text class="micro-label" x="0" y="91" text-anchor="middle">ورودی اصلی</text>
+    </g>
+
+    <!-- stairs between middle and window hall -->
+    <g transform="translate(542 400)">
+      <path d="M-20-56H34V56H-20Z" fill="#efeae4" fill-opacity=".78" stroke="#422e2f" stroke-opacity=".18"/>
+      <path d="M-10-44H30M-10-28H30M-10-12H30M-10 4H30M-10 20H30M-10 36H30" stroke="#6d5f54" stroke-opacity=".48" stroke-width="2"/>
+      <text class="micro-label" transform="translate(48 0) rotate(-90)" text-anchor="middle">پله سالن پنجره</text>
+    </g>
+
+    <!-- reception -->
+    <g>
+      <path d="M560 660H755V842H560Z" fill="#4d3c3d" fill-opacity=".18"/>
+      <path d="M568 646H747V829H568Z" fill="#efeae4" fill-opacity=".54" stroke="#422e2f" stroke-opacity=".18"/>
+      <path d="M578 660H737V696H578Z" fill="url(#bar)"/>
+      <text class="landmark-label" x="657" y="684" text-anchor="middle">صندوق</text>
+      <rect x="640" y="625" width="34" height="22" rx="2" fill="#422e2f" fill-opacity=".62"/>
+      <path d="M647 632h20M647 638h15" stroke="#efeae4" stroke-opacity=".65" stroke-width="2"/>
+    </g>
+
+    <!-- cafe bar -->
+    <g>
+      <path d="M745 690H1088V620H1138V760H810V816H745Z" fill="#1f1516" fill-opacity=".18"/>
+      <path d="M735 676H1078V606H1128V746H800V802H735Z" fill="url(#bar)" stroke="#422e2f" stroke-opacity=".32"/>
+      <path d="M748 690H1064V620H1114V732H786V788H748Z" fill="#6d5f54" fill-opacity=".26" stroke="#efeae4" stroke-opacity=".12"/>
+      <text class="landmark-label" x="925" y="714" text-anchor="middle">کافه‌بار</text>
+      <g transform="translate(765 658)" opacity=".78"><circle cx="0" cy="0" r="8" fill="#efeae4"/><circle cx="28" cy="0" r="8" fill="#efeae4"/><circle cx="56" cy="0" r="8" fill="#efeae4"/></g>
+    </g>
+
+    <!-- elevator / neutral service block -->
+    <g>
+      <path d="M1065 455H1166V575H1065Z" fill="#1f1516" fill-opacity=".12"/>
+      <path d="M1055 443H1156V563H1055Z" fill="#efeae4" fill-opacity=".54" stroke="#422e2f" stroke-opacity=".2"/>
+      <rect x="1072" y="462" width="67" height="82" fill="#6d5f54" fill-opacity=".18" stroke="#422e2f" stroke-opacity=".16"/>
+      <path d="M1105 462v82" stroke="#422e2f" stroke-opacity=".2"/>
+      <text class="micro-label" x="1105" y="581" text-anchor="middle">فضای خدماتی</text>
+    </g>
+
+    <!-- WC -->
+    <g>
+      <path d="M1066 713H1162V842H1066Z" fill="#1f1516" fill-opacity=".12"/>
+      <path d="M1058 701H1154V830H1058Z" fill="#efeae4" fill-opacity=".58" stroke="#422e2f" stroke-opacity=".2"/>
+      <text class="floor-label" x="1106" y="770" text-anchor="middle" font-size="16">سرویس</text>
+      <path d="M1154 758h-24a24 24 0 0 0 24 24" fill="none" stroke="#6d5f54" stroke-opacity=".5" stroke-width="2"/>
+    </g>
+
+    <!-- roof entrance -->
+    <g transform="translate(1190 690)">
+      <path d="M0-72V72" stroke="#efeae4" stroke-width="14"/>
+      <path d="M0-62Q94 0 0 62" fill="none" stroke="#6d5f54" stroke-opacity=".55" stroke-width="2" stroke-dasharray="5 5"/>
+      <text class="micro-label" x="56" y="0" text-anchor="middle" transform="rotate(-90 56 0)">ورودی روف گاردن</text>
+    </g>
+
+    <!-- roof green border -->
+    <g>
+      <rect x="1733" y="92" width="34" height="738" rx="4" fill="#4c403d" fill-opacity=".18"/>
+      <rect x="1724" y="84" width="34" height="738" rx="3" fill="url(#plant)"/>
+      <path d="M1732 104c18 12 5 28 18 42-16 12-6 28-18 42 17 12 5 28 18 42-16 12-6 28-18 42 17 12 5 28 18 42-16 12-6 28-18 42 17 12 5 28 18 42-16 12-6 28-18 42 17 12 5 28 18 42-16 12-6 28-18 42 17 12 5 28 18 42-16 12-6 28-18 42 17 12 5 28 18 42-16 12-6 28-18 42" fill="none" stroke="#c5bcad" stroke-opacity=".35" stroke-width="3"/>
+      <text class="micro-label" x="1741" y="456" text-anchor="middle" transform="rotate(-90 1741 456)" fill="#efeae4">نوار سبز</text>
+    </g>
+
+    <!-- roof planters and pergola posts -->
+    <g class="plant-breathe" transform="translate(1214 120)"><use href="#plant-tall" width="46" height="62" x="-23" y="-46"/></g>
+    <g class="plant-breathe" transform="translate(1210 430)"><use href="#plant-small" width="34" height="34" x="-17" y="-17"/></g>
+    <g class="plant-breathe" transform="translate(1220 810)"><use href="#plant-tall" width="48" height="66" x="-24" y="-49"/></g>
+    <g class="plant-breathe" transform="translate(1700 190)"><use href="#plant-tall" width="48" height="66" x="-24" y="-49"/></g>
+    <g class="plant-breathe" transform="translate(1698 530)"><use href="#plant-small" width="34" height="34" x="-17" y="-17"/></g>
+    <g class="plant-breathe" transform="translate(1698 800)"><use href="#plant-tall" width="48" height="66" x="-24" y="-49"/></g>
+
+    <g opacity=".72">
+      <g transform="translate(1448 132)"><rect x="-16" y="-16" width="32" height="32" rx="4" fill="#5a4b47"/><path d="M-12-12L12 12M12-12L-12 12" stroke="#efeae4" stroke-opacity=".55"/></g>
+      <g transform="translate(1510 520)"><rect x="-16" y="-16" width="32" height="32" rx="4" fill="#5a4b47"/><path d="M-12-12L12 12M12-12L-12 12" stroke="#efeae4" stroke-opacity=".55"/></g>
+      <g transform="translate(1490 830)"><rect x="-16" y="-16" width="32" height="32" rx="4" fill="#5a4b47"/><path d="M-12-12L12 12M12-12L-12 12" stroke="#efeae4" stroke-opacity=".55"/></g>
+    </g>
+
+    <!-- large fan landmark -->
+    <g transform="translate(1645 250)" opacity=".72">
+      <circle r="26" fill="#efeae4" fill-opacity=".62" stroke="#422e2f" stroke-opacity=".16"/>
+      <circle r="5" fill="#422e2f"/>
+      <path d="M0-5C12-24 26-19 20-5C12 2 5 2 0-5ZM5 0C24 12 19 26 5 20C-2 12-2 5 5 0ZM0 5C-12 24-26 19-20 5C-12-2-5-2 0 5ZM-5 0C-24-12-19-26-5-20C2-12 2-5-5 0Z" fill="#6d5f54" fill-opacity=".52"/>
+    </g>
+
+    <!-- circulation paths -->
+    <path d="M910 150C910 260 900 400 920 585" fill="none" stroke="#efeae4" stroke-opacity=".36" stroke-width="28" stroke-linecap="round"/>
+    <path d="M1205 700C1300 700 1380 700 1470 710" fill="none" stroke="#efeae4" stroke-opacity=".24" stroke-width="24" stroke-linecap="round"/>
+  </g>
+
+  <g id="combo-layer"></g>
+  <g id="table-layer"></g>
+  <g id="editor-layer"></g>
+</svg>
