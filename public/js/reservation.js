@@ -1,5 +1,8 @@
 import { api, toman } from './api.js';
 import { ICONS, createSheetController, initHeaderScroll } from './ui.js';
+import { RoofMap } from './map-renderer.js';
+
+const ZONE_FA = { WINDOW: 'سالن پنجره', CENTER: 'سالن وسط', ROOF: 'روف گاردن' };
 
 const state = {
   config: null,
@@ -8,20 +11,33 @@ const state = {
   duration: 60,
   availability: null,
   selectedTableIds: [],
-  selectedLabel: ''
+  selectedLabel: '',
+  map: null
 };
 
 const el = (id) => document.getElementById(id);
-const floorMap = el('floorMap');
-const bubbleLayer = el('bubbleLayer');
 const sheet = createSheetController(el('sidePanel'));
 initHeaderScroll();
 
+function renderMap() {
+  if (!state.map) return;
+  state.map.setTables(state.availability?.tables || [], {
+    selectedTableIds: state.selectedTableIds,
+    mode: state.mode
+  });
+}
+
+function clearSelection() {
+  state.selectedTableIds = [];
+  state.selectedLabel = '';
+  state.map?.setSelected([]);
+}
+
 /* ---------- guest stepper ---------- */
-document.querySelectorAll('.stepper [data-step]').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    const input = btn.parentElement.querySelector('input');
-    const next = Math.min(20, Math.max(1, Number(input.value || 1) + Number(btn.dataset.step)));
+document.querySelectorAll('.stepper [data-step]').forEach((button) => {
+  button.addEventListener('click', () => {
+    const input = button.parentElement.querySelector('input');
+    const next = Math.min(20, Math.max(1, Number(input.value || 1) + Number(button.dataset.step)));
     input.value = next;
   });
 });
@@ -30,17 +46,17 @@ document.querySelectorAll('.stepper [data-step]').forEach((btn) => {
 function renderDurationChips() {
   const row = el('durationRow');
   row.innerHTML = '';
-  for (let m = 60; m <= 240; m += 30) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'chip' + (m === state.duration ? ' active' : '');
-    btn.textContent = `${(m / 60).toLocaleString('fa-IR')} ساعت`;
-    btn.addEventListener('click', () => {
-      state.duration = m;
-      row.querySelectorAll('.chip').forEach((c) => c.classList.remove('active'));
-      btn.classList.add('active');
+  for (let minutes = 60; minutes <= 240; minutes += 30) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `chip${minutes === state.duration ? ' active' : ''}`;
+    button.textContent = `${(minutes / 60).toLocaleString('fa-IR')} ساعت`;
+    button.addEventListener('click', () => {
+      state.duration = minutes;
+      row.querySelectorAll('.chip').forEach((chip) => chip.classList.remove('active'));
+      button.classList.add('active');
     });
-    row.appendChild(btn);
+    row.appendChild(button);
   }
 }
 
@@ -49,18 +65,19 @@ function renderDates() {
   const row = el('dateRow');
   row.innerHTML = '';
   state.config.dates.forEach((date, index) => {
-    const d = new Date(date + 'T12:00:00');
-    const label = index === 0 ? 'امروز' : index === 1 ? 'فردا' : d.toLocaleDateString('fa-IR', { weekday: 'short' });
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'date-chip' + (index === 0 ? ' active' : '');
-    btn.innerHTML = `<strong>${label}</strong><small>${d.toLocaleDateString('fa-IR', { month: 'short', day: 'numeric' })}</small>`;
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.date-chip').forEach((b) => b.classList.remove('active'));
-      btn.classList.add('active');
+    const value = new Date(`${date}T12:00:00`);
+    const label = index === 0 ? 'امروز' : index === 1 ? 'فردا' : value.toLocaleDateString('fa-IR', { weekday: 'short' });
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `date-chip${index === 0 ? ' active' : ''}`;
+    button.innerHTML = `<strong>${label}</strong><small>${value.toLocaleDateString('fa-IR', { month: 'short', day: 'numeric' })}</small>`;
+    button.addEventListener('click', () => {
+      document.querySelectorAll('.date-chip').forEach((item) => item.classList.remove('active'));
+      button.classList.add('active');
       state.selectedDate = date;
+      clearSelection();
     });
-    row.appendChild(btn);
+    row.appendChild(button);
   });
   state.selectedDate = state.config.dates[0];
 }
@@ -68,148 +85,82 @@ function renderDates() {
 /* ---------- exact / range mode ---------- */
 function setMode(mode) {
   state.mode = mode;
-  document.querySelectorAll('.mode-tabs button').forEach((b) => b.classList.toggle('active', b.dataset.mode === mode));
-  el('exactBox').style.display = mode === 'exact' ? '' : 'none';
-  el('rangeBox').style.display = mode === 'range' ? '' : 'none';
-}
-document.querySelectorAll('.mode-tabs button').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
-
-/* ---------- floor map (mock — verified clear of the real seeded tables;
-   swapped for the real plan later without touching this logic) ---------- */
-function tableColor(table) {
-  const a = table.availability;
-  if (state.selectedTableIds.includes(table.id)) return '#422E2F';
-  if (!a?.available) return 'rgba(66,46,47,.3)';
-  if (a.matchType === 'perfect') return '#6E8151';
-  return '#A9B98C';
+  document.querySelectorAll('.mode-tabs button').forEach((button) => {
+    button.classList.toggle('active', button.dataset.mode === mode);
+  });
+  el('exactBox').hidden = mode !== 'exact';
+  el('rangeBox').hidden = mode !== 'range';
+  clearSelection();
+  renderMap();
 }
 
-function drawBase() {
-  floorMap.innerHTML = `
-    <polygon points="90,68 840,68 890,560 50,560" fill="rgba(255,255,255,.22)" stroke="rgba(66,46,47,.14)" stroke-width="1.5"/>
-    <polygon points="105,82 825,82 840,205 95,205" fill="rgba(255,255,255,.16)" stroke="rgba(66,46,47,.08)"/>
-    <text x="790" y="125" text-anchor="middle" fill="#6D5F54" font-size="17">کنار پنجره</text>
-    <polygon points="95,220 842,220 862,410 78,410" fill="rgba(197,188,173,.22)" stroke="rgba(66,46,47,.08)"/>
-    <text x="785" y="260" text-anchor="middle" fill="#6D5F54" font-size="17">وسط</text>
-    <polygon points="78,426 865,426 882,548 60,548" fill="rgba(255,255,255,.16)" stroke="rgba(66,46,47,.08)"/>
-    <text x="795" y="468" text-anchor="middle" fill="#6D5F54" font-size="17">روف</text>
-
-    <rect x="44" y="225" width="42" height="95" rx="4" fill="#6D5F54" opacity=".3"/>
-    <text x="65" y="335" text-anchor="middle" fill="#422E2F" font-size="13">در</text>
-
-    <rect x="855" y="380" width="46" height="110" rx="4" fill="none" stroke="#422E2F" stroke-opacity=".4"/>
-    <path d="M855 400h46M855 420h46M855 440h46M855 460h46M855 480h46" stroke="#422E2F" stroke-opacity=".3"/>
-    <text x="878" y="504" text-anchor="middle" fill="#422E2F" font-size="13">پله</text>
-
-    <circle cx="880" cy="95" r="22" fill="rgba(66,46,47,.14)"/>
-    <circle cx="880" cy="95" r="13" fill="rgba(66,46,47,.22)"/>
-    <text x="880" y="132" text-anchor="middle" fill="#6D5F54" font-size="12">گلدون</text>
-
-    <rect x="200" y="70" width="360" height="10" rx="2" fill="rgba(255,255,255,.35)" stroke="rgba(66,46,47,.1)"/>
-  `;
-}
-
-function addTable(table) {
-  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-  g.classList.add('map-table');
-  if (!table.availability?.available) g.classList.add('disabled');
-  if (state.selectedTableIds.includes(table.id)) g.classList.add('selected');
-  g.style.setProperty('--tx', table.x);
-  g.style.setProperty('--ty', table.y);
-  g.style.setProperty('--rot', `${table.rotation || 0}deg`);
-
-  const color = tableColor(table);
-  const selected = state.selectedTableIds.includes(table.id);
-  const shape = document.createElementNS('http://www.w3.org/2000/svg', table.shape === 'ROUND' ? 'ellipse' : 'rect');
-  if (table.shape === 'ROUND') {
-    shape.setAttribute('cx', 0); shape.setAttribute('cy', 0); shape.setAttribute('rx', table.width / 2); shape.setAttribute('ry', table.height / 2);
-  } else {
-    shape.setAttribute('x', -table.width / 2); shape.setAttribute('y', -table.height / 2);
-    shape.setAttribute('width', table.width); shape.setAttribute('height', table.height);
-    shape.setAttribute('rx', table.shape === 'SQUARE' ? 6 : 8);
-  }
-  shape.setAttribute('fill', color);
-  shape.setAttribute('stroke', selected ? '#EFEAE4' : 'rgba(66,46,47,.16)');
-  shape.setAttribute('stroke-width', selected ? '3' : '1.2');
-
-  const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-  label.setAttribute('text-anchor', 'middle');
-  label.setAttribute('dominant-baseline', 'middle');
-  label.setAttribute('fill', selected ? '#EFEAE4' : '#1F1516');
-  label.setAttribute('font-weight', '700');
-  label.setAttribute('font-size', '17');
-  label.textContent = table.displayNumber;
-
-  g.appendChild(shape);
-  g.appendChild(label);
-  g.addEventListener('click', () => selectSingleTable(table));
-  floorMap.appendChild(g);
-
-  if (table.availability?.available && table.availability.startTime && state.mode === 'range') {
-    const bubble = document.createElement('div');
-    bubble.className = 'bubble';
-    bubble.textContent = `از ${table.availability.startTime}`;
-    bubble.style.right = `${100 - (table.x / 940) * 100}%`;
-    bubble.style.top = `${(table.y / 610) * 100 - 3}%`;
-    bubbleLayer.appendChild(bubble);
-  }
-}
-
-function drawMap() {
-  drawBase();
-  bubbleLayer.innerHTML = '';
-  const tables = state.availability?.tables || [];
-  tables.forEach(addTable);
-}
+document.querySelectorAll('.mode-tabs button').forEach((button) => {
+  button.addEventListener('click', () => setMode(button.dataset.mode));
+});
 
 /* ---------- selection + detail panel ---------- */
-function detailCard(title, lines, showAction) {
+function detailCard(title, lines, showAction = false) {
   return `
     <h4>${title}</h4>
-    ${lines.map((l) => `<p>${l}</p>`).join('')}
+    ${lines.map((line) => `<p>${line}</p>`).join('')}
     ${showAction ? `<button class="primary-btn" id="openReserve" style="margin-top:10px">${ICONS.check}<span>ادامه رزرو</span></button>` : ''}
   `;
 }
 
+function bindReserveAction() {
+  const button = el('openReserve');
+  if (button) button.addEventListener('click', openReserveModal);
+}
+
 function selectSingleTable(table) {
   if (!table.availability?.available) {
-    el('selectedDetail').innerHTML = detailCard(`میز ${table.displayNumber}`, [table.availability?.reason || 'قابل رزرو نیست.']);
+    el('selectedDetail').innerHTML = detailCard(
+      `میز ${table.displayNumber}`,
+      [ZONE_FA[table.zone] || table.zone, table.availability?.reason || 'این میز در حال حاضر قابل رزرو نیست.']
+    );
     sheet.open();
     return;
   }
+
   state.selectedTableIds = [table.id];
   state.selectedLabel = `میز ${table.displayNumber}`;
-  drawMap();
+  state.map.setSelected(state.selectedTableIds);
   el('selectedDetail').innerHTML = detailCard(state.selectedLabel, [
+    `${ZONE_FA[table.zone] || table.zone} · ظرفیت ${Number(table.capacity).toLocaleString('fa-IR')} نفر`,
     table.availability.message,
     `قابل رزرو از ${table.availability.startTime} تا ${table.availability.endTime}`
   ], true);
-  el('openReserve').addEventListener('click', openReserveModal);
+  bindReserveAction();
   sheet.open();
 }
 
 function selectCombo(combo) {
-  state.selectedTableIds = combo.tableIds;
+  state.selectedTableIds = [...combo.tableIds];
   state.selectedLabel = `میزهای ${combo.displayNumbers.join(' و ')}`;
-  drawMap();
+  state.map.setSelected(state.selectedTableIds);
   el('selectedDetail').innerHTML = detailCard(state.selectedLabel, [
     combo.message,
+    `ظرفیت مجموع: ${Number(combo.capacity).toLocaleString('fa-IR')} نفر`,
     `قابل رزرو از ${combo.startTime} تا ${combo.endTime}`
   ], true);
-  el('openReserve').addEventListener('click', openReserveModal);
+  bindReserveAction();
   sheet.open();
 }
 
 function renderCombos() {
   const panel = el('comboPanel');
   const list = el('comboList');
-  list.innerHTML = '';
   const combos = state.availability?.combos || [];
-  panel.style.display = combos.length ? '' : 'none';
+  list.innerHTML = '';
+  panel.hidden = combos.length === 0;
+
   combos.forEach((combo) => {
     const item = document.createElement('div');
     item.className = 'combo-item';
-    item.innerHTML = `<span>${combo.message}</span><button class="secondary-btn">انتخاب</button>`;
+    item.innerHTML = `
+      <span><b>میزهای ${combo.displayNumbers.join(' و ')}</b><small>${combo.startTime} تا ${combo.endTime} · ظرفیت ${Number(combo.capacity).toLocaleString('fa-IR')} نفر</small></span>
+      <button type="button" class="secondary-btn">انتخاب</button>
+    `;
     item.querySelector('button').addEventListener('click', () => selectCombo(combo));
     list.appendChild(item);
   });
@@ -223,28 +174,59 @@ function openReserveModal() {
   el('modalSummary').innerHTML = `${state.selectedLabel}<br>تعداد نفرات: ${guests.toLocaleString('fa-IR')}<br>مبلغ: ${toman(price)}`;
   el('reserveModal').classList.add('open');
 }
+
 el('closeModal').addEventListener('click', () => el('reserveModal').classList.remove('open'));
+el('reserveModal').addEventListener('click', (event) => {
+  if (event.target === el('reserveModal')) el('reserveModal').classList.remove('open');
+});
 
 /* ---------- search + hold ---------- */
-el('searchForm').addEventListener('submit', async (event) => {
-  event.preventDefault();
-  state.selectedTableIds = [];
+function buildAvailabilityParams() {
   const params = new URLSearchParams({
     date: state.selectedDate,
     guests: el('guestCount').value,
-    durationMinutes: state.duration
+    durationMinutes: String(state.duration)
   });
-  if (state.mode === 'exact') params.set('startTime', el('startTime').value);
-  else { params.set('rangeStart', el('rangeStart').value); params.set('rangeEnd', el('rangeEnd').value); }
+  if (state.mode === 'exact') {
+    params.set('startTime', el('startTime').value);
+  } else {
+    params.set('rangeStart', el('rangeStart').value);
+    params.set('rangeEnd', el('rangeEnd').value);
+  }
+  return params;
+}
+
+function selectedStartTime() {
+  if (state.mode === 'exact') return el('startTime').value;
+  const selectedCombo = state.availability?.combos?.find((combo) => (
+    combo.tableIds.length === state.selectedTableIds.length
+    && combo.tableIds.every((id) => state.selectedTableIds.includes(id))
+  ));
+  if (selectedCombo) return selectedCombo.startTime;
+  return state.availability?.tables?.find((table) => state.selectedTableIds.includes(table.id))?.availability?.startTime;
+}
+
+el('searchForm').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  clearSelection();
   try {
     el('searchNotice').className = 'notice';
-    el('searchNotice').textContent = 'در حال بررسی...';
-    state.availability = await api(`/api/availability?${params}`);
-    drawMap();
+    el('searchNotice').textContent = 'در حال بررسی میزها...';
+    state.availability = await api(`/api/availability?${buildAvailabilityParams()}`);
+    renderMap();
     renderCombos();
-    el('searchNotice').className = 'notice ok';
-    el('searchNotice').textContent = state.availability.exactMissingMessage || 'میزهای قابل رزرو روی نقشه روشن شدند.';
-    el('selectedDetail').innerHTML = `<h4>میزی انتخاب نشده</h4><p>روی یک میز سبز روی نقشه ضربه بزن.</p>`;
+
+    const availableCount = state.availability.tables.filter((table) => table.availability?.available).length;
+    if (availableCount || state.availability.combos.length) {
+      el('searchNotice').className = 'notice ok';
+      el('searchNotice').textContent = state.availability.exactMissingMessage
+        || `${availableCount.toLocaleString('fa-IR')} میز مناسب روی نقشه روشن شد.`;
+      el('selectedDetail').innerHTML = '<h4>میزی انتخاب نشده</h4><p>روی یک میز روشن ضربه بزن تا جزئیاتش رو ببینی.</p>';
+    } else {
+      el('searchNotice').className = 'notice warn';
+      el('searchNotice').textContent = 'برای این ترکیب زمان و تعداد نفرات، میز آزادی پیدا نشد. زمان یا تاریخ نزدیک دیگری رو امتحان کن.';
+      el('selectedDetail').innerHTML = '<h4>گزینه‌ای پیدا نشد</h4><p>زمان، تاریخ یا مدت رزرو رو تغییر بده تا نقشه دوباره بررسی بشه.</p>';
+    }
   } catch (error) {
     el('searchNotice').className = 'notice danger';
     el('searchNotice').textContent = error.message;
@@ -253,16 +235,13 @@ el('searchForm').addEventListener('submit', async (event) => {
 
 el('reserveForm').addEventListener('submit', async (event) => {
   event.preventDefault();
-  const submitBtn = event.target.querySelector('button[type=submit]');
-  submitBtn.disabled = true;
+  const submitButton = event.target.querySelector('button[type="submit"]');
+  submitButton.disabled = true;
   try {
     const body = {
       tableIds: state.selectedTableIds,
       date: state.selectedDate,
-      startTime: state.mode === 'exact'
-        ? el('startTime').value
-        : (state.availability.combos.find((c) => c.tableIds.every((id) => state.selectedTableIds.includes(id)))?.startTime
-          || state.availability.tables.find((t) => state.selectedTableIds.includes(t.id))?.availability?.startTime),
+      startTime: selectedStartTime(),
       durationMinutes: state.duration,
       guestCount: Number(el('guestCount').value),
       customerName: el('customerName').value,
@@ -271,24 +250,43 @@ el('reserveForm').addEventListener('submit', async (event) => {
     const { reservation } = await api('/api/reservations/hold', { method: 'POST', body });
     window.location.href = `/payment.html?id=${reservation.id}`;
   } catch (error) {
-    submitBtn.disabled = false;
-    el('modalSummary').outerHTML = `<div id="modalSummary" class="notice danger">${error.message}</div>`;
+    submitButton.disabled = false;
+    el('modalSummary').className = 'notice danger';
+    el('modalSummary').textContent = error.message;
   }
 });
 
 /* ---------- init ---------- */
 async function init() {
-  el('selectedDetail').innerHTML = `<div class="skeleton" style="height:15px;width:55%;margin-bottom:10px"></div><div class="skeleton" style="height:11px;width:85%"></div>`;
+  el('selectedDetail').innerHTML = '<div class="skeleton" style="height:15px;width:55%;margin-bottom:10px"></div><div class="skeleton" style="height:11px;width:85%"></div>';
+
+  state.map = new RoofMap({
+    svg: el('floorMap'),
+    wrap: el('mapWrap'),
+    zoneTabs: el('zoneTabs'),
+    onTableClick: selectSingleTable
+  });
+
+  await state.map.init();
+  el('mapLoading').hidden = true;
+
   state.config = await api('/api/config');
   renderDurationChips();
   renderDates();
-  state.availability = await api(`/api/availability?date=${state.selectedDate}&guests=${el('guestCount').value}&durationMinutes=${state.duration}&startTime=${el('startTime').value}`).catch(() => ({ tables: [], combos: [] }));
-  drawMap();
+
+  try {
+    state.availability = await api(`/api/availability?${buildAvailabilityParams()}`);
+  } catch {
+    state.availability = { tables: [], combos: [] };
+  }
+
+  renderMap();
   renderCombos();
-  el('selectedDetail').innerHTML = `<h4>میزی انتخاب نشده</h4><p>روی یک میز سبز روی نقشه ضربه بزن.</p>`;
+  el('selectedDetail').innerHTML = '<h4>میزی انتخاب نشده</h4><p>بعد از بررسی زمان، روی یکی از میزهای روشن ضربه بزن.</p>';
 }
 
 init().catch((error) => {
+  el('mapLoading').hidden = true;
   el('searchNotice').className = 'notice danger';
   el('searchNotice').textContent = error.message;
 });

@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#EFEAE4">
   <title>پنل ادمین · Roof</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
@@ -17,8 +18,8 @@
     </header>
 
     <section class="admin-layout" style="margin-top:22px">
-      <nav class="admin-menu" id="adminMenu"></nav>
-      <section class="card card-pad">
+      <nav class="admin-menu" id="adminMenu" aria-label="بخش‌های پنل مدیریت"></nav>
+      <section class="card card-pad admin-content">
         <div id="dashboard" class="admin-section active"><h3>داشبورد امروز</h3><div id="dashboardBox" class="kpi-grid"></div></div>
         <div id="reservations" class="admin-section"><h3>رزروها</h3><div id="reservationBox"></div></div>
         <div id="manual" class="admin-section">
@@ -43,7 +44,15 @@
             <div id="manualNotice"></div>
           </div>
         </div>
-        <div id="tables" class="admin-section"><h3>مدیریت میزها</h3><div id="tableBox"></div></div>
+        <div id="tables" class="admin-section">
+          <h3>مدیریت میزها<span class="hint">میز رو روی نقشه انتخاب یا جابه‌جا کن؛ بعد مشخصات رو ذخیره کن.</span></h3>
+          <div id="adminMapEditor" class="admin-map-editor"></div>
+          <div class="admin-table-list-head">
+            <h4>فهرست میزها</h4>
+            <span id="tableCount"></span>
+          </div>
+          <div id="tableBox"></div>
+        </div>
         <div id="hours" class="admin-section"><h3>ساعت کاری</h3><div id="hoursBox"></div></div>
         <div id="closures" class="admin-section"><h3>تعطیلی‌ها و بلاک‌ها</h3><div id="closuresBox"></div></div>
         <div id="settings" class="admin-section"><h3>قیمت و تنظیمات</h3><div id="settingsBox"></div></div>
