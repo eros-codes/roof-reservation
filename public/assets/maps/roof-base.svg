@@ -63,7 +63,7 @@
     <filter id="plant-shadow" x="-60%" y="-60%" width="220%" height="220%">
       <feDropShadow dx="0" dy="6" stdDeviation="5" flood-color="#1f1516" flood-opacity=".2"/>
     </filter>
-    <clipPath id="window-clip"><path d="M42 78H548V846H18L76 78Z"/></clipPath>
+    <clipPath id="window-clip"><path d="M42 78H548V846H18L180 78Z"/></clipPath>
     <clipPath id="center-clip"><path d="M540 78H1185V846H540Z"/></clipPath>
     <clipPath id="roof-clip"><path d="M1175 78H1778V846H1175Z"/></clipPath>
     <symbol id="plant-small" viewBox="-20 -20 40 40">
@@ -84,16 +84,16 @@
 
   <g id="architecture-layer" class="map-static">
     <!-- floor plates -->
-    <path d="M42 78H548V846H18L76 78Z" fill="url(#floor-window)" stroke="#422e2f" stroke-opacity=".17" stroke-width="2"/>
+    <path d="M42 78H548V846H18L180 78Z" fill="url(#floor-window)" stroke="#422e2f" stroke-opacity=".17" stroke-width="2"/>
     <path d="M540 78H1185V846H540Z" fill="url(#floor-center)" stroke="#422e2f" stroke-opacity=".17" stroke-width="2"/>
     <path d="M1175 78H1778V846H1175Z" fill="url(#floor-roof)" stroke="#422e2f" stroke-opacity=".17" stroke-width="2"/>
-    <path d="M42 78H548V846H18L76 78Z" fill="url(#tile-grid)" clip-path="url(#window-clip)"/>
+    <path d="M42 78H548V846H18L180 78Z" fill="url(#tile-grid)" clip-path="url(#window-clip)"/>
     <path d="M540 78H1185V846H540Z" fill="url(#tile-grid)" clip-path="url(#center-clip)"/>
     <path d="M1175 78H1778V846H1175Z" fill="url(#tile-grid)" clip-path="url(#roof-clip)"/>
     <path d="M1175 78H1778V846H1175Z" fill="url(#pergola)" clip-path="url(#roof-clip)" opacity=".36"/>
 
     <!-- 2.5D wall extrusions -->
-    <path d="M42 78H548V92H45L20 846H18Z" fill="url(#wall-side)" opacity=".72"/>
+    <path d="M42 78H548V92H184L20 846H18Z" fill="url(#wall-side)" opacity=".72"/>
     <path d="M540 78H1185V92H540Z" fill="url(#wall-side)" opacity=".72"/>
     <path d="M1175 78H1778V92H1175Z" fill="url(#wall-side)" opacity=".72"/>
     <path d="M548 78H560V846H548Z" fill="url(#wall-side)" opacity=".64"/>
@@ -160,13 +160,6 @@
       <path d="M-50 40Q0 88 50 40" fill="none" stroke="#6d5f54" stroke-opacity=".55" stroke-width="2" stroke-dasharray="5 5"/>
       <path d="M0 15v54m0 0-12-14m12 14 12-14" fill="none" stroke="#422e2f" stroke-opacity=".55" stroke-width="2"/>
       <text class="micro-label" x="0" y="91" text-anchor="middle">ورودی اصلی</text>
-    </g>
-
-    <!-- stairs between middle and window hall -->
-    <g transform="translate(542 400)">
-      <path d="M-20-56H34V56H-20Z" fill="#efeae4" fill-opacity=".78" stroke="#422e2f" stroke-opacity=".18"/>
-      <path d="M-10-44H30M-10-28H30M-10-12H30M-10 4H30M-10 20H30M-10 36H30" stroke="#6d5f54" stroke-opacity=".48" stroke-width="2"/>
-      <text class="micro-label" transform="translate(48 0) rotate(-90)" text-anchor="middle">پله سالن پنجره</text>
     </g>
 
     <!-- reception -->

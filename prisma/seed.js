@@ -42,19 +42,68 @@ async function main() {
     create: { email, name, passwordHash, role: 'OWNER', isActive: true }
   });
 
+  // --------------------------------------------------------------------
+  // میزها: نسخه‌ی اول برگرفته از نقشه‌ی واقعی کافه (Cafe-plan + عکس‌ها).
+  // کدها و displayNumber فعلاً رندومن؛ عمداً طبق خواسته‌ی خودت، تا وقتی
+  // شماره‌گذاری نهایی رو دستی ندی، عوضشون نمی‌کنیم.
+  // ظرفیت هر میز از رو تعداد صندلی دورش رو نقشه دراومده.
+  // اتصال میزها (TableConnection) عمداً خالی مونده - طبق گفته‌ی خودت،
+  // فعلاً کاری باهاش نداریم.
+  // --------------------------------------------------------------------
   const tableData = [
-    { code: 'T1', displayNumber: '۱', zone: 'WINDOW', shape: 'ROUND', capacity: 2, minGuests: 1, maxGuests: 2, x: 150, y: 135, width: 70, height: 70, description: 'کنار پنجره، میز گرد دو نفره' },
-    { code: 'T2', displayNumber: '۲', zone: 'WINDOW', shape: 'SQUARE', capacity: 4, minGuests: 2, maxGuests: 4, x: 270, y: 135, width: 76, height: 76, description: 'کنار پنجره، میز چهار نفره' },
-    { code: 'T3', displayNumber: '۳', zone: 'WINDOW', shape: 'RECTANGLE', capacity: 4, minGuests: 2, maxGuests: 4, x: 395, y: 135, width: 96, height: 64, description: 'کنار پنجره، مستطیل' },
-    { code: 'T4', displayNumber: '۴', zone: 'CENTER', shape: 'RECTANGLE', capacity: 6, minGuests: 4, maxGuests: 6, x: 215, y: 305, width: 118, height: 70, description: 'وسط، قابل اتصال به میز ۵' },
-    { code: 'T5', displayNumber: '۵', zone: 'CENTER', shape: 'RECTANGLE', capacity: 6, minGuests: 4, maxGuests: 6, x: 370, y: 305, width: 118, height: 70, description: 'وسط، قابل اتصال به میز ۴' },
-    { code: 'T6', displayNumber: '۶', zone: 'CENTER', shape: 'SQUARE', capacity: 4, minGuests: 2, maxGuests: 4, x: 535, y: 300, width: 78, height: 78, description: 'وسط سالن' },
-    { code: 'T7', displayNumber: '۷', zone: 'ROOF', shape: 'ROUND', capacity: 2, minGuests: 1, maxGuests: 2, x: 210, y: 505, width: 74, height: 74, description: 'روف، دو نفره' },
-    { code: 'T8', displayNumber: '۸', zone: 'ROOF', shape: 'RECTANGLE', capacity: 4, minGuests: 2, maxGuests: 4, x: 350, y: 505, width: 98, height: 66, description: 'روف، چهار نفره' },
-    { code: 'T9', displayNumber: '۹', zone: 'ROOF', shape: 'RECTANGLE', capacity: 6, minGuests: 4, maxGuests: 6, x: 520, y: 505, width: 118, height: 70, description: 'روف، شش نفره، قابل اتصال به میز ۱۰' },
-    { code: 'T10', displayNumber: '۱۰', zone: 'ROOF', shape: 'RECTANGLE', capacity: 6, minGuests: 4, maxGuests: 6, x: 675, y: 505, width: 118, height: 70, description: 'روف، شش نفره، قابل اتصال به میز ۹' }
+    { code: 'W207', displayNumber: '207', zone: 'WINDOW', shape: 'SQUARE', capacity: 2, minGuests: 1, maxGuests: 2, x: 175, y: 95, width: 60, height: 60, rotation: -18, description: 'کنار پنجره' },
+    { code: 'W410', displayNumber: '410', zone: 'WINDOW', shape: 'SQUARE', capacity: 2, minGuests: 1, maxGuests: 2, x: 150, y: 195, width: 60, height: 60, rotation: -18, description: 'کنار پنجره' },
+    { code: 'W935', displayNumber: '935', zone: 'WINDOW', shape: 'SQUARE', capacity: 2, minGuests: 1, maxGuests: 2, x: 126, y: 295, width: 60, height: 60, rotation: -18, description: 'کنار پنجره' },
+    { code: 'W249', displayNumber: '249', zone: 'WINDOW', shape: 'SQUARE', capacity: 2, minGuests: 1, maxGuests: 2, x: 103, y: 395, width: 60, height: 60, rotation: -18, description: 'کنار پنجره' },
+    { code: 'W798', displayNumber: '798', zone: 'WINDOW', shape: 'SQUARE', capacity: 2, minGuests: 1, maxGuests: 2, x: 80, y: 495, width: 60, height: 60, rotation: -18, description: 'کنار پنجره' },
+    { code: 'W377', displayNumber: '377', zone: 'WINDOW', shape: 'SQUARE', capacity: 2, minGuests: 1, maxGuests: 2, x: 57, y: 595, width: 60, height: 60, rotation: -18, description: 'کنار پنجره' },
+    { code: 'W325', displayNumber: '325', zone: 'WINDOW', shape: 'SQUARE', capacity: 2, minGuests: 1, maxGuests: 2, x: 34, y: 695, width: 60, height: 60, rotation: -18, description: 'کنار پنجره' },
+    { code: 'W184', displayNumber: '184', zone: 'WINDOW', shape: 'SQUARE', capacity: 2, minGuests: 1, maxGuests: 2, x: 400, y: 150, width: 60, height: 60, rotation: 0, description: 'کنار پنجره، داخلی' },
+    { code: 'W691', displayNumber: '691', zone: 'WINDOW', shape: 'SQUARE', capacity: 4, minGuests: 2, maxGuests: 4, x: 270, y: 210, width: 78, height: 78, rotation: 0, description: 'کنار پنجره، داخلی' },
+    { code: 'W606', displayNumber: '606', zone: 'WINDOW', shape: 'RECTANGLE', capacity: 6, minGuests: 4, maxGuests: 6, x: 280, y: 340, width: 130, height: 70, rotation: 0, description: 'کنار پنجره، میز بزرگ داخلی' },
+    { code: 'W636', displayNumber: '636', zone: 'WINDOW', shape: 'SQUARE', capacity: 2, minGuests: 1, maxGuests: 2, x: 410, y: 345, width: 60, height: 60, rotation: 0, description: 'کنار پنجره، داخلی' },
+    { code: 'W251', displayNumber: '251', zone: 'WINDOW', shape: 'RECTANGLE', capacity: 2, minGuests: 1, maxGuests: 2, x: 150, y: 780, width: 56, height: 40, rotation: 0, description: 'روبه‌روی مبل سرتاسری (بخشی از مبل خالی/بدون میز رزروپذیر مونده)' },
+    { code: 'W398', displayNumber: '398', zone: 'WINDOW', shape: 'RECTANGLE', capacity: 2, minGuests: 1, maxGuests: 2, x: 230, y: 780, width: 56, height: 40, rotation: 0, description: 'روبه‌روی مبل سرتاسری (بخشی از مبل خالی/بدون میز رزروپذیر مونده)' },
+    { code: 'W220', displayNumber: '220', zone: 'WINDOW', shape: 'RECTANGLE', capacity: 2, minGuests: 1, maxGuests: 2, x: 320, y: 800, width: 56, height: 40, rotation: 0, description: 'روبه‌روی مبل سرتاسری (بخشی از مبل خالی/بدون میز رزروپذیر مونده)' },
+    { code: 'W670', displayNumber: '670', zone: 'WINDOW', shape: 'RECTANGLE', capacity: 2, minGuests: 1, maxGuests: 2, x: 420, y: 800, width: 56, height: 40, rotation: 0, description: 'روبه‌روی مبل سرتاسری (بخشی از مبل خالی/بدون میز رزروپذیر مونده)' },
+    { code: 'M659', displayNumber: '659', zone: 'CENTER', shape: 'ROUND', capacity: 1, minGuests: 1, maxGuests: 1, x: 990, y: 110, width: 40, height: 40, rotation: 0, description: 'مبل تک‌نفره بنفش' },
+    { code: 'M459', displayNumber: '459', zone: 'CENTER', shape: 'ROUND', capacity: 1, minGuests: 1, maxGuests: 1, x: 1040, y: 170, width: 40, height: 40, rotation: 0, description: 'مبل تک‌نفره بنفش' },
+    { code: 'M408', displayNumber: '408', zone: 'CENTER', shape: 'SQUARE', capacity: 2, minGuests: 1, maxGuests: 2, x: 770, y: 100, width: 58, height: 58, rotation: 0, description: 'سالن وسط' },
+    { code: 'M990', displayNumber: '990', zone: 'CENTER', shape: 'RECTANGLE', capacity: 4, minGuests: 2, maxGuests: 4, x: 900, y: 150, width: 110, height: 66, rotation: 0, description: 'سالن وسط' },
+    { code: 'M995', displayNumber: '995', zone: 'CENTER', shape: 'SQUARE', capacity: 2, minGuests: 1, maxGuests: 2, x: 650, y: 260, width: 58, height: 58, rotation: 0, description: 'سالن وسط' },
+    { code: 'M349', displayNumber: '349', zone: 'CENTER', shape: 'RECTANGLE', capacity: 6, minGuests: 3, maxGuests: 6, x: 790, y: 600, width: 110, height: 66, rotation: 0, description: 'سالن وسط' },
+    { code: 'M939', displayNumber: '939', zone: 'CENTER', shape: 'SQUARE', capacity: 2, minGuests: 1, maxGuests: 2, x: 610, y: 610, width: 58, height: 58, rotation: 0, description: 'سالن وسط' },
+    { code: 'M708', displayNumber: '708', zone: 'CENTER', shape: 'SQUARE', capacity: 4, minGuests: 2, maxGuests: 4, x: 930, y: 600, width: 76, height: 76, rotation: 0, description: 'سالن وسط' },
+    { code: 'M501', displayNumber: '501', zone: 'CENTER', shape: 'SQUARE', capacity: 4, minGuests: 2, maxGuests: 4, x: 650, y: 780, width: 76, height: 76, rotation: 0, description: 'سالن وسط' },
+    { code: 'M847', displayNumber: '847', zone: 'CENTER', shape: 'SQUARE', capacity: 2, minGuests: 1, maxGuests: 2, x: 870, y: 800, width: 58, height: 58, rotation: 0, description: 'سالن وسط' },
+    { code: 'R412', displayNumber: '412', zone: 'ROOF', shape: 'ROUND', capacity: 1, minGuests: 1, maxGuests: 1, x: 1230, y: 110, width: 40, height: 40, rotation: 0, description: 'مبل تک‌نفره' },
+    { code: 'R839', displayNumber: '839', zone: 'ROOF', shape: 'ROUND', capacity: 1, minGuests: 1, maxGuests: 1, x: 1280, y: 170, width: 40, height: 40, rotation: 0, description: 'مبل تک‌نفره' },
+    { code: 'R148', displayNumber: '148', zone: 'ROOF', shape: 'SQUARE', capacity: 4, minGuests: 2, maxGuests: 4, x: 1330, y: 130, width: 72, height: 72, rotation: 0, description: 'روف گاردن' },
+    { code: 'R496', displayNumber: '496', zone: 'ROOF', shape: 'SQUARE', capacity: 4, minGuests: 2, maxGuests: 4, x: 1610, y: 130, width: 72, height: 72, rotation: 0, description: 'روف گاردن' },
+    { code: 'R482', displayNumber: '482', zone: 'ROOF', shape: 'SQUARE', capacity: 4, minGuests: 2, maxGuests: 4, x: 1730, y: 130, width: 72, height: 72, rotation: 0, description: 'روف گاردن' },
+    { code: 'R132', displayNumber: '132', zone: 'ROOF', shape: 'SQUARE', capacity: 4, minGuests: 2, maxGuests: 4, x: 1330, y: 250, width: 72, height: 72, rotation: 0, description: 'روف گاردن' },
+    { code: 'R107', displayNumber: '107', zone: 'ROOF', shape: 'SQUARE', capacity: 4, minGuests: 2, maxGuests: 4, x: 1480, y: 250, width: 72, height: 72, rotation: 0, description: 'روف گاردن' },
+    { code: 'R899', displayNumber: '899', zone: 'ROOF', shape: 'SQUARE', capacity: 4, minGuests: 2, maxGuests: 4, x: 1610, y: 250, width: 72, height: 72, rotation: 0, description: 'روف گاردن' },
+    { code: 'R843', displayNumber: '843', zone: 'ROOF', shape: 'SQUARE', capacity: 4, minGuests: 2, maxGuests: 4, x: 1730, y: 250, width: 72, height: 72, rotation: 0, description: 'روف گاردن' },
+    { code: 'R176', displayNumber: '176', zone: 'ROOF', shape: 'SQUARE', capacity: 4, minGuests: 2, maxGuests: 4, x: 1330, y: 370, width: 72, height: 72, rotation: 0, description: 'روف گاردن' },
+    { code: 'R911', displayNumber: '911', zone: 'ROOF', shape: 'SQUARE', capacity: 4, minGuests: 2, maxGuests: 4, x: 1480, y: 370, width: 72, height: 72, rotation: 0, description: 'روف گاردن' },
+    { code: 'R719', displayNumber: '719', zone: 'ROOF', shape: 'SQUARE', capacity: 4, minGuests: 2, maxGuests: 4, x: 1610, y: 370, width: 72, height: 72, rotation: 0, description: 'روف گاردن' },
+    { code: 'R657', displayNumber: '657', zone: 'ROOF', shape: 'SQUARE', capacity: 4, minGuests: 2, maxGuests: 4, x: 1730, y: 370, width: 72, height: 72, rotation: 0, description: 'روف گاردن' },
+    { code: 'R525', displayNumber: '525', zone: 'ROOF', shape: 'SQUARE', capacity: 4, minGuests: 2, maxGuests: 4, x: 1330, y: 490, width: 72, height: 72, rotation: 0, description: 'روف گاردن' },
+    { code: 'R753', displayNumber: '753', zone: 'ROOF', shape: 'SQUARE', capacity: 4, minGuests: 2, maxGuests: 4, x: 1610, y: 490, width: 72, height: 72, rotation: 0, description: 'روف گاردن' },
+    { code: 'R140', displayNumber: '140', zone: 'ROOF', shape: 'SQUARE', capacity: 4, minGuests: 2, maxGuests: 4, x: 1730, y: 490, width: 72, height: 72, rotation: 0, description: 'روف گاردن' },
+    { code: 'R735', displayNumber: '735', zone: 'ROOF', shape: 'SQUARE', capacity: 4, minGuests: 2, maxGuests: 4, x: 1330, y: 610, width: 72, height: 72, rotation: 0, description: 'روف گاردن' },
+    { code: 'R560', displayNumber: '560', zone: 'ROOF', shape: 'SQUARE', capacity: 4, minGuests: 2, maxGuests: 4, x: 1480, y: 610, width: 72, height: 72, rotation: 0, description: 'روف گاردن' },
+    { code: 'R897', displayNumber: '897', zone: 'ROOF', shape: 'SQUARE', capacity: 4, minGuests: 2, maxGuests: 4, x: 1610, y: 610, width: 72, height: 72, rotation: 0, description: 'روف گاردن' },
+    { code: 'R280', displayNumber: '280', zone: 'ROOF', shape: 'SQUARE', capacity: 4, minGuests: 2, maxGuests: 4, x: 1730, y: 610, width: 72, height: 72, rotation: 0, description: 'روف گاردن' },
+    { code: 'R306', displayNumber: '306', zone: 'ROOF', shape: 'SQUARE', capacity: 4, minGuests: 2, maxGuests: 4, x: 1330, y: 730, width: 72, height: 72, rotation: 0, description: 'روف گاردن' },
+    { code: 'R221', displayNumber: '221', zone: 'ROOF', shape: 'SQUARE', capacity: 4, minGuests: 2, maxGuests: 4, x: 1480, y: 730, width: 72, height: 72, rotation: 0, description: 'روف گاردن' },
+    { code: 'R402', displayNumber: '402', zone: 'ROOF', shape: 'SQUARE', capacity: 4, minGuests: 2, maxGuests: 4, x: 1610, y: 730, width: 72, height: 72, rotation: 0, description: 'روف گاردن' },
+    { code: 'R622', displayNumber: '622', zone: 'ROOF', shape: 'SQUARE', capacity: 4, minGuests: 2, maxGuests: 4, x: 1730, y: 730, width: 72, height: 72, rotation: 0, description: 'روف گاردن' },
+    { code: 'R443', displayNumber: '443', zone: 'ROOF', shape: 'SQUARE', capacity: 4, minGuests: 2, maxGuests: 4, x: 1330, y: 830, width: 72, height: 72, rotation: 0, description: 'روف گاردن' },
+    { code: 'R509', displayNumber: '509', zone: 'ROOF', shape: 'SQUARE', capacity: 4, minGuests: 2, maxGuests: 4, x: 1610, y: 830, width: 72, height: 72, rotation: 0, description: 'روف گاردن' },
+    { code: 'R487', displayNumber: '487', zone: 'ROOF', shape: 'SQUARE', capacity: 4, minGuests: 2, maxGuests: 4, x: 1730, y: 830, width: 72, height: 72, rotation: 0, description: 'روف گاردن' }
   ];
-
   for (const table of tableData) {
     await prisma.cafeTable.upsert({
       where: { code: table.code },
@@ -63,12 +112,13 @@ async function main() {
     });
   }
 
-  const t4 = await prisma.cafeTable.findUnique({ where: { code: 'T4' } });
-  const t5 = await prisma.cafeTable.findUnique({ where: { code: 'T5' } });
-  const t9 = await prisma.cafeTable.findUnique({ where: { code: 'T9' } });
-  const t10 = await prisma.cafeTable.findUnique({ where: { code: 'T10' } });
+  // اتصال میزها فعلاً خالی — بعداً که خودت تصمیم گرفتی کدوم میزها قابل
+  // اتصالن، این آرایه رو پر می‌کنیم: [['کدمیزالف','کدمیزب'], ...]
+  const wantedConnections = [];
 
-  for (const [a, b] of [[t4, t5], [t9, t10]]) {
+  for (const [codeA, codeB] of wantedConnections) {
+    const a = await prisma.cafeTable.findUnique({ where: { code: codeA } });
+    const b = await prisma.cafeTable.findUnique({ where: { code: codeB } });
     if (a && b) {
       const tableAId = a.id < b.id ? a.id : b.id;
       const tableBId = a.id < b.id ? b.id : a.id;
