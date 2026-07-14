@@ -862,7 +862,7 @@ div.clock-range div.field {
 	align-items: center;
 	justify-content: center;
 	padding: 20px;
-	z-index: 99;
+	z-index: 100q;
 }
 .modal.open {
 	display: flex;
