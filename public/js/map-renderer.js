@@ -116,6 +116,17 @@ function createChair(position, scale = 1) {
   return group;
 }
 
+function createSharedSeatMarker(position) {
+  const group = svgEl('g', {
+    class: 'roof-chair roof-chair--shared',
+    transform: `translate(${rounded(position.x)} ${rounded(position.y)}) rotate(${rounded(position.angle || 0)})`
+  });
+  const title = svgEl('title');
+  title.textContent = 'صندلی مشترک با مبل — روی مبل پس‌زمینه می‌شینه';
+  group.append(svgEl('circle', { class: 'shared-seat-dot', cx: 0, cy: 0, r: 6 }), title);
+  return group;
+}
+
 function createSofaModule({ x, y, width, rotation = 0, double = false }) {
   const group = svgEl('g', { class: 'roof-sofa-module', transform: `translate(${x} ${y}) rotate(${rotation})` });
   const w = double ? width * 1.65 : width;
@@ -161,7 +172,8 @@ function createTableBody(table, visual) {
 }
 
 function createTableLabel(table) {
-  const group = svgEl('g', { class: 'table-number-badge' });
+  // شماره‌ی میز عمداً برخلاف چرخش خود میز می‌چرخه تا همیشه صاف و خوانا بمونه.
+  const group = svgEl('g', { class: 'table-number-badge', transform: `rotate(${rounded(-(table.rotation || 0))})` });
   group.append(
     svgEl('circle', { class: 'table-number-bg', cx: 0, cy: 0, r: 15 }),
     svgEl('text', { class: 'table-number', x: 0, y: 1, 'text-anchor': 'middle', 'dominant-baseline': 'middle' })
@@ -428,7 +440,12 @@ export class RoofMap {
       anchor.style.setProperty('--table-delay', `${Math.min(index * 18, 420)}ms`);
       const lift = svgEl('g', { class: 'roof-table-lift' });
 
-      if (visual.seatLayout === 'lounge') {
+      if (Array.isArray(table.chairs) && table.chairs.length) {
+        table.chairs.forEach((chair) => {
+          if (chair.type === 'shared') lift.append(createSharedSeatMarker(chair));
+          else lift.append(createChair({ x: chair.x, y: chair.y, rotation: chair.angle || 0 }, chair.scale || 1));
+        });
+      } else if (visual.seatLayout === 'lounge') {
         lift.append(createLounge(table));
       } else {
         chairPositions(table, visual).forEach((position) => lift.append(createChair(position, visual.chairScale || 1)));

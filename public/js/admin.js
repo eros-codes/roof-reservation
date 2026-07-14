@@ -199,6 +199,7 @@ async function createManual() {
 }
 
 el('createManual').addEventListener('click', createManual);
+el('addTableBtn').addEventListener('click', () => state.mapEditor?.openCreateDialog?.());
 
 /* ---------- tables + map management ---------- */
 function renderTableList() {

@@ -127,6 +127,7 @@ model CafeTable {
   width          Float              @default(82)
   height         Float              @default(58)
   rotation       Float              @default(0)
+  chairs         Json?
   description    String?
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt

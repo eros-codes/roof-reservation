@@ -94,9 +94,23 @@ adminRouter.get('/tables', async (_req, res, next) => {
   }
 });
 
+const ZONE_PREFIX = { WINDOW: 'W', CENTER: 'M', ROOF: 'R' };
+
+async function uniqueTableCode(zone) {
+  const prefix = ZONE_PREFIX[zone] || 'T';
+  for (let i = 0; i < 10; i++) {
+    const c = `${prefix}${Math.floor(100 + Math.random() * 900)}`;
+    if (!(await prisma.cafeTable.findUnique({ where: { code: c } }))) return c;
+  }
+  throw new Error('ساخت کد میز ناموفق بود.');
+}
+
 adminRouter.post('/tables', requireRole('OWNER', 'MANAGER'), async (req, res, next) => {
   try {
-    const table = await prisma.cafeTable.create({ data: req.body });
+    const data = { ...req.body };
+    if (!data.code) data.code = await uniqueTableCode(data.zone);
+    if (!data.displayNumber) data.displayNumber = data.code.replace(/^\D+/, '');
+    const table = await prisma.cafeTable.create({ data });
     res.status(201).json({ table });
   } catch (error) {
     next(error);
@@ -111,6 +125,18 @@ adminRouter.patch('/tables/:id', requireRole('OWNER', 'MANAGER'), async (req, re
     const table = await prisma.cafeTable.update({ where: { id: req.params.id }, data });
     res.json({ table });
   } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.delete('/tables/:id', requireRole('OWNER', 'MANAGER'), async (req, res, next) => {
+  try {
+    await prisma.cafeTable.delete({ where: { id: req.params.id } });
+    res.json({ message: 'میز حذف شد.' });
+  } catch (error) {
+    if (error.code === 'P2003') {
+      return res.status(409).json({ message: 'این میز تو رزروهای قبلی یا فعلی استفاده شده و نمی‌شه حذفش کرد؛ به‌جاش می‌تونی غیرفعالش کنی.' });
+    }
     next(error);
   }
 });
