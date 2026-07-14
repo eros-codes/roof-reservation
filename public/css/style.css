@@ -286,6 +286,7 @@ table {
 }
 
 .card {
+  height: fit-content;
 	background: rgba(239, 234, 228, 0.5);
 	border: 1px solid var(--line);
 	border-radius: var(--r-sm);
@@ -530,10 +531,10 @@ div.clock-range div.field {
 }
 
 /* buttons */
-.primary-btn {
+.primary-btn-main {
 	width: 95%;
 	border-radius: var(--r-xs);
-	padding: 14px 18px;
+	padding: 14px 10px;
 	background: var(--rich-sabel);
 	color: var(--chapel-white);
 	font-weight: 600;
@@ -541,8 +542,26 @@ div.clock-range div.field {
 	position: relative;
 	overflow: hidden;
 	transition:
-		transform 0.22s ease,
-		box-shadow 0.22s ease;
+	transform 0.22s ease,
+	box-shadow 0.22s ease;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+}
+.primary-btn {
+	width: 100%;
+	border-radius: var(--r-xs);
+	padding: 14px 10px;
+	background: var(--rich-sabel);
+	color: var(--chapel-white);
+	font-weight: 600;
+	font-size: 14px;
+	position: relative;
+	overflow: hidden;
+	transition:
+	transform 0.22s ease,
+	box-shadow 0.22s ease;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -1149,27 +1168,32 @@ div.clock-range div.field {
 	align-items: center;
 	justify-content: flex-end;
 }
+section.grid>section.card-pad{
+  min-height: 200px;
+}
 
 .empty-state {
+  display: flex;
+  flex-direction: column;
+  justify-content: start;
+  align-items: center;
+  gap: 5px;
 	text-align: center;
-	padding: 34px 18px;
+	padding: 5px 10px;
 	color: var(--deep-taupe);
 }
 .empty-state svg {
 	width: 38px;
 	height: 38px;
-	margin-bottom: 12px;
 	opacity: 0.5;
 }
 .empty-state strong {
 	display: block;
 	color: var(--rich-sabel);
 	font-size: 14.5px;
-	margin-bottom: 5px;
 }
 .empty-state p {
 	font-size: 13px;
-	line-height: 1.8;
 	max-width: 300px;
 	margin: 0 auto;
 	opacity: 0.85;
