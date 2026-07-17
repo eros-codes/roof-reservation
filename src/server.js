@@ -44,4 +44,5 @@ app.use((error, _req, res, _next) => {
 
 app.listen(config.port, () => {
   console.log(`Roof Reservation running on ${config.appUrl}`);
+  console.log(`NODE_ENV=${config.nodeEnv} → کوکی‌ها secure=${config.isProd} (روی http فقط با secure=false کار می‌کنن)`);
 });

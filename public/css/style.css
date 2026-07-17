@@ -881,7 +881,7 @@ div.clock-range div.field {
 	align-items: center;
 	justify-content: center;
 	padding: 20px;
-	z-index: 100q;
+	z-index: 100;
 }
 .modal.open {
 	display: flex;
@@ -2161,3 +2161,4 @@ section.grid>section.card-pad{
   flex-direction: column;
   gap: 10px;
 }
+.primary-btn svg, .secondary-btn svg, .danger-btn svg, .ghost-btn svg { width: 17px; height: 17px; flex: none; }

@@ -103,7 +103,8 @@ model AdminUser {
 model OtpCode {
   id         String     @id @default(cuid())
   phone      String
-  code       String
+  codeHash   String
+  attempts   Int        @default(0)
   purpose    OtpPurpose
   expiresAt  DateTime
   consumedAt DateTime?

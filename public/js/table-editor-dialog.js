@@ -147,7 +147,7 @@ export function mountTableEditorDialog({ onSaved, onDeleted, getConnections, get
 
   function renderCapacity() {
     const out = box.querySelector('[data-capacity-readout]');
-    if (out) out.textContent = `ظرفیت این میز: ${chairs.length.toLocaleString('fa-IR')} نفر (از رو تعداد صندلی‌ها)`;
+    if (out) out.textContent = `تعداد صندلی چیده‌شده: ${chairs.length.toLocaleString('fa-IR')} (این فقط راهنماست؛ حداقل/حداکثر نفر رزرو رو خودت بالا تعیین می‌کنی)`;
   }
 
   async function renderConnections() {
@@ -201,9 +201,10 @@ export function mountTableEditorDialog({ onSaved, onDeleted, getConnections, get
       ),
       el('div', { class: 'field' }, el('label', {}, 'توضیح / کپشن'), el('textarea', { 'data-field': 'description', rows: 2 }, t.description || '')),
       el('div', { class: 'row' },
-        el('div', { class: 'field' }, el('label', {}, 'حداقل نفر'), el('input', { 'data-field': 'minGuests', type: 'number', min: '1', value: t.minGuests || 1 })),
-        el('div', { class: 'field' }, el('label', {}, 'چرخش میز'), el('input', { 'data-field': 'rotation', type: 'number', step: '1', value: t.rotation || 0, oninput: renderCanvas }))
+        el('div', { class: 'field' }, el('label', {}, 'حداقل نفر رزرو'), el('input', { 'data-field': 'minGuests', type: 'number', min: '1', value: t.minGuests || 1 })),
+        el('div', { class: 'field' }, el('label', {}, 'حداکثر نفر رزرو'), el('input', { 'data-field': 'maxGuests', type: 'number', min: '1', value: t.maxGuests || t.capacity || (chairs.length || 1) }))
       ),
+      el('div', { class: 'field' }, el('label', {}, 'چرخش میز'), el('input', { 'data-field': 'rotation', type: 'number', step: '1', value: t.rotation || 0, oninput: renderCanvas })),
       el('hr', { class: 'dialog-divider' }),
       el('div', { class: 'chair-editor' },
         el('div', { class: 'chair-canvas-wrap' }, (() => { canvasSvg = svg('svg', { viewBox: '-120 -120 240 240', class: 'chair-mini-canvas' }); return canvasSvg; })()),
@@ -257,12 +258,12 @@ export function mountTableEditorDialog({ onSaved, onDeleted, getConnections, get
       isActive: field('isActive').value === 'true',
       description: field('description').value.trim() || null,
       minGuests: Number(field('minGuests').value) || 1,
+      maxGuests: Number(field('maxGuests').value) || chairs.length,
       rotation: Number(field('rotation').value) || 0,
       capacity: chairs.length,
-      maxGuests: chairs.length,
       chairs: chairs.map(({ id, ...rest }) => rest)
     };
-    if (body.minGuests > body.capacity) body.minGuests = body.capacity;
+    if (body.minGuests > body.maxGuests) body.minGuests = body.maxGuests;
     try {
       box.querySelector('[type="submit"]').disabled = true;
       if (mode === 'create') {

@@ -13,7 +13,7 @@
         <span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#EFEAE4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5L12 5l8 7.5"/><path d="M6.5 10.7V19h11v-8.3"/></svg></span>
         <span class="brand-text"><span class="brand-word">Roof</span><span class="brand-sub">پیگیری رزرو مهمان</span></span>
       </a>
-      <nav class="nav"><a href="/">رزرو جدید</a></nav>
+      <nav class="nav"><a href="/">رزرو جدید</a><a href="/profile.html">حساب من</a></nav>
     </header>
 
     <section class="page-head">
@@ -24,14 +24,7 @@
     <section class="grid">
       <aside class="card card-pad">
         <h3>دسترسی مهمان</h3>
-        <div class="form-grid">
-          <div class="field"><label>کد پیگیری</label><input id="trackingCode" placeholder="RSV-123456"></div>
-          <div class="field"><label>شماره موبایل</label><input id="phone" placeholder="09..."></div>
-          <button id="sendOtp" class="secondary-btn">ارسال کد تایید</button>
-          <div class="field"><label>کد تایید</label><input id="code" inputmode="numeric"></div>
-          <button id="verifyOtp" class="primary-btn">نمایش رزرو</button>
-          <div id="notice"></div>
-        </div>
+        <div id="otpBox"></div>
       </aside>
       <section class="card card-pad">
         <h3>جزئیات رزرو</h3>

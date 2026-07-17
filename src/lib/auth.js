@@ -21,12 +21,22 @@ export function verifyAdminToken(token) {
   return jwt.verify(token, config.adminJwtSecret);
 }
 
+export function verifyGuestToken(token) {
+  return jwt.verify(token, config.jwtSecret);
+}
+
+const COOKIE_MAX_AGE = {
+  adminToken: 12 * 60 * 60 * 1000,
+  guestToken: 2 * 60 * 60 * 1000,
+  userToken: 30 * 24 * 60 * 60 * 1000
+};
+
 export function setCookie(res, name, token) {
   res.cookie(name, token, {
     httpOnly: true,
     sameSite: 'lax',
     secure: config.isProd,
-    maxAge: name === 'adminToken' ? 12 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000
+    maxAge: COOKIE_MAX_AGE[name] || COOKIE_MAX_AGE.userToken
   });
 }
 

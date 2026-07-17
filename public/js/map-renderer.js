@@ -172,8 +172,9 @@ function createTableBody(table, visual) {
 }
 
 function createTableLabel(table) {
-  // شماره‌ی میز عمداً برخلاف چرخش خود میز می‌چرخه تا همیشه صاف و خوانا بمونه.
-  const group = svgEl('g', { class: 'table-number-badge', transform: `rotate(${rounded(-(table.rotation || 0))})` });
+  // چون این بج بیرون از لایه‌ی چرخان (roof-table-spin) اضافه می‌شه، خودش
+  // هیچ‌وقت نمی‌چرخه؛ نیازی به چرخش معکوس نیست.
+  const group = svgEl('g', { class: 'table-number-badge' });
   group.append(
     svgEl('circle', { class: 'table-number-bg', cx: 0, cy: 0, r: 15 }),
     svgEl('text', { class: 'table-number', x: 0, y: 1, 'text-anchor': 'middle', 'dominant-baseline': 'middle' })
@@ -416,7 +417,7 @@ export class RoofMap {
     if (!table) return;
     Object.assign(table, geometry);
     const node = this.tableNodes.get(tableId);
-    if (node) node.setAttribute('transform', `translate(${rounded(table.x)} ${rounded(table.y)}) rotate(${rounded(table.rotation || 0)})`);
+    if (node) node.setAttribute('transform', `translate(${rounded(table.x)} ${rounded(table.y)})`);
     this.drawComboConnector();
   }
 
@@ -430,7 +431,7 @@ export class RoofMap {
       const stateClass = tableStateClass(table, this.selectedIds, this.editable);
       const anchor = svgEl('g', {
         class: `roof-table-anchor ${stateClass}`,
-        transform: `translate(${rounded(table.x)} ${rounded(table.y)}) rotate(${rounded(table.rotation || 0)})`,
+        transform: `translate(${rounded(table.x)} ${rounded(table.y)})`,
         'data-table-id': table.id,
         'data-table-code': table.code,
         tabindex: 0,
@@ -438,19 +439,24 @@ export class RoofMap {
         'aria-label': `میز ${table.displayNumber}، ظرفیت ${table.capacity} نفر`
       });
       anchor.style.setProperty('--table-delay', `${Math.min(index * 18, 420)}ms`);
+      // lift فقط جابه‌جایی/سایه/هاوره - عمداً چرخش نداره، وگرنه سایه و جهت
+      // بالا-رفتن هاور هم با میز می‌چرخید.
       const lift = svgEl('g', { class: 'roof-table-lift' });
+      // spin فقط چرخش داره؛ فقط شکل میز و صندلی‌ها اینجان تا واقعاً بچرخن.
+      const spin = svgEl('g', { class: 'roof-table-spin', transform: `rotate(${rounded(table.rotation || 0)})` });
 
       if (Array.isArray(table.chairs) && table.chairs.length) {
         table.chairs.forEach((chair) => {
-          if (chair.type === 'shared') lift.append(createSharedSeatMarker(chair));
-          else lift.append(createChair({ x: chair.x, y: chair.y, rotation: chair.angle || 0 }, chair.scale || 1));
+          if (chair.type === 'shared') spin.append(createSharedSeatMarker(chair));
+          else spin.append(createChair({ x: chair.x, y: chair.y, rotation: chair.angle || 0 }, chair.scale || 1));
         });
       } else if (visual.seatLayout === 'lounge') {
-        lift.append(createLounge(table));
+        spin.append(createLounge(table));
       } else {
-        chairPositions(table, visual).forEach((position) => lift.append(createChair(position, visual.chairScale || 1)));
+        chairPositions(table, visual).forEach((position) => spin.append(createChair(position, visual.chairScale || 1)));
       }
-      lift.append(createTableBody(table, visual), createTableLabel(table));
+      spin.append(createTableBody(table, visual));
+      lift.append(spin, createTableLabel(table));
 
       if (this.mode === 'range' && table.availability?.available && table.availability.startTime) {
         lift.append(createTimeBubble(`از ${table.availability.startTime}`, table));

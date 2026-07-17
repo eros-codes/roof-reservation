@@ -12,7 +12,8 @@ const state = {
   availability: null,
   selectedTableIds: [],
   selectedLabel: '',
-  map: null
+  map: null,
+  currentUser: null
 };
 
 const el = (id) => document.getElementById(id);
@@ -172,6 +173,10 @@ function openReserveModal() {
   const guests = Number(el('guestCount').value);
   const price = state.config.settings.pricePerGuest * guests;
   el('modalSummary').innerHTML = `${state.selectedLabel}<br>تعداد نفرات: ${guests.toLocaleString('fa-IR')}<br>مبلغ: ${toman(price)}`;
+  if (state.currentUser) {
+    el('customerName').value = state.currentUser.name || '';
+    el('customerPhone').value = state.currentUser.phone || '';
+  }
   el('reserveModal').classList.add('open');
 }
 
@@ -273,6 +278,13 @@ async function init() {
   state.config = await api('/api/config');
   renderDurationChips();
   renderDates();
+
+  try {
+    const { user } = await api('/api/me');
+    state.currentUser = user;
+  } catch {
+    state.currentUser = null;
+  }
 
   try {
     state.availability = await api(`/api/availability?${buildAvailabilityParams()}`);

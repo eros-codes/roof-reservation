@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>پروفایل من · Roof</title>
+  <title>حساب من · Roof</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -11,34 +11,45 @@
     <header class="topbar">
       <a class="brand" href="/">
         <span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="#EFEAE4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5L12 5l8 7.5"/><path d="M6.5 10.7V19h11v-8.3"/></svg></span>
-        <span class="brand-text"><span class="brand-word">Roof</span><span class="brand-sub">پروفایل من</span></span>
+        <span class="brand-text"><span class="brand-word">Roof</span><span class="brand-sub">حساب من</span></span>
       </a>
-      <nav class="nav"><a href="/">رزرو جدید</a><button id="logout" class="ghost-btn">خروج</button></nav>
+      <nav class="nav"><a href="/">رزرو جدید</a><button id="logoutBtn" class="ghost-btn" hidden>خروج</button></nav>
     </header>
 
-    <section class="page-head">
-      <span class="eyebrow">ورود با کد یک‌بارمصرف</span>
-      <h2>رزروهای من</h2>
+    <!-- حالت وارد نشده: فقط گیت ورود -->
+    <section id="loginGate" class="page-head" style="max-width:420px;margin-inline:auto;text-align:center">
+      <span class="eyebrow" style="align-self:center">ورود با کد یک‌بارمصرف</span>
+      <h2>حساب من</h2>
+      <p class="lede" style="margin-inline:auto">با شماره موبایلت وارد شو تا رزروهات و اطلاعات حسابت رو اینجا ببینی.</p>
     </section>
+    <section id="loginGateForm" class="card card-pad" style="max-width:420px;margin:0 auto"></section>
 
-    <section class="grid">
-      <aside class="card card-pad">
-        <h3>ورود / ثبت‌نام</h3>
-        <div class="form-grid">
-          <div class="field"><label>شماره موبایل</label><input id="phone" placeholder="09..."></div>
-          <button id="sendOtp" class="secondary-btn">ارسال کد</button>
-          <div class="row">
-            <div class="field"><label>کد تایید</label><input id="code" inputmode="numeric"></div>
-            <div class="field"><label>نام (اختیاری)</label><input id="name"></div>
+    <!-- حالت واردشده: hub واقعی -->
+    <section id="accountHub" hidden>
+      <section class="page-head">
+        <span class="eyebrow">خوش اومدی</span>
+        <h2 id="hubGreeting">حساب من</h2>
+      </section>
+
+      <nav class="admin-menu" id="hubTabs" style="grid-auto-flow:column;grid-template-columns:none;width:fit-content;margin-bottom:18px">
+        <button type="button" data-tab="reservations" class="active">رزروهای من</button>
+        <button type="button" data-tab="account">اطلاعات حساب</button>
+      </nav>
+
+      <section data-tab-panel="reservations" class="admin-section active">
+        <div id="reservationsBox" class="skeleton" style="height:100px"></div>
+      </section>
+
+      <section data-tab-panel="account" class="admin-section">
+        <div class="card card-pad" style="max-width:420px">
+          <h3>اطلاعات حساب</h3>
+          <div class="form-grid">
+            <div class="field"><label>نام</label><input id="accountName" placeholder="نامت رو وارد کن"></div>
+            <div class="field"><label>شماره موبایل</label><input id="accountPhone" disabled></div>
+            <button id="saveAccountBtn" class="secondary-btn">ذخیره نام</button>
+            <div id="accountNotice"></div>
           </div>
-          <button id="verifyOtp" class="primary-btn">تایید و ورود</button>
-          <div id="loginNotice"></div>
         </div>
-      </aside>
-
-      <section class="card card-pad">
-        <h3>لیست رزروها</h3>
-        <div id="profileBox" class="skeleton" style="height:80px"></div>
       </section>
     </section>
   </main>

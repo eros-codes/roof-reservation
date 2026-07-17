@@ -48,7 +48,12 @@ export function addDays(date, days) {
 }
 
 export function normalizePhone(phone) {
-  return String(phone || '').trim().replace(/[^0-9+]/g, '');
+  let p = String(phone || '').trim().replace(/[^0-9+]/g, '');
+  if (p.startsWith('+98')) p = '0' + p.slice(3);
+  else if (p.startsWith('0098')) p = '0' + p.slice(4);
+  else if (p.startsWith('98') && p.length === 12) p = '0' + p.slice(2);
+  else if (p.length === 10 && p.startsWith('9')) p = '0' + p;
+  return /^09\d{9}$/.test(p) ? p : '';
 }
 
 export function generateTrackingCode() {

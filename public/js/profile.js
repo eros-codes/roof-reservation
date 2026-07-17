@@ -1,17 +1,19 @@
 import { api, faDateTime, statusFa, toman } from './api.js';
 import { ICONS, initHeaderScroll } from './ui.js';
+import { mountOtpWidget } from './otp-widget.js';
 
 initHeaderScroll();
 
-const box = document.getElementById('profileBox');
-const notice = document.getElementById('loginNotice');
+const q = (id) => document.getElementById(id);
 
 function dateBlock(iso) {
   const d = new Date(iso);
   return `<div class="timeline-date"><strong>${d.toLocaleDateString('fa-IR', { day: 'numeric' })}</strong><span>${d.toLocaleDateString('fa-IR', { month: 'short' })}</span></div>`;
 }
 
-function renderList(reservations) {
+function renderReservations(reservations) {
+  const box = q('reservationsBox');
+  box.className = '';
   if (!reservations.length) {
     box.innerHTML = `<div class="empty-state">${ICONS.empty}<strong>هنوز رزروی ثبت نشده</strong><p>از صفحه اصلی یک تاریخ انتخاب کن تا اولین رزروت اینجا بیفته.</p></div>`;
     return;
@@ -30,35 +32,57 @@ function renderList(reservations) {
     </div>`).join('')}</div>`;
 }
 
-async function loadMe() {
-  const { user } = await api('/api/me');
-  if (!user) {
-    box.className = '';
-    box.innerHTML = `<div class="empty-state">${ICONS.phone}<strong>هنوز وارد نشده‌ای</strong><p>از فرم کناری با موبایلت وارد شو تا رزروهات نمایش داده بشه.</p></div>`;
-    return;
-  }
-  notice.className = 'notice ok';
-  notice.textContent = `وارد شده با شماره ${user.phone}`;
-  box.className = '';
-  const { reservations } = await api('/api/reservations/profile/list');
-  renderList(reservations);
+function showHub(user) {
+  q('loginGate').hidden = true;
+  q('loginGateForm').hidden = true;
+  q('accountHub').hidden = false;
+  q('logoutBtn').hidden = false;
+  q('hubGreeting').textContent = user.name ? `سلام ${user.name}` : 'حساب من';
+  q('accountName').value = user.name || '';
+  q('accountPhone').value = user.phone;
 }
 
-document.getElementById('sendOtp').onclick = async () => {
+function showLoginGate() {
+  q('loginGate').hidden = false;
+  q('loginGateForm').hidden = false;
+  q('accountHub').hidden = true;
+  q('logoutBtn').hidden = true;
+  mountOtpWidget(q('loginGateForm'), {
+    purpose: 'LOGIN',
+    extraFields: [{ key: 'name', label: 'نام (اختیاری)' }],
+    submitLabel: 'ورود',
+    onVerified: async () => { await load(); }
+  });
+}
+
+q('hubTabs').addEventListener('click', (event) => {
+  const btn = event.target.closest('[data-tab]');
+  if (!btn) return;
+  document.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('active', b === btn));
+  document.querySelectorAll('[data-tab-panel]').forEach((p) => p.classList.toggle('active', p.dataset.tabPanel === btn.dataset.tab));
+});
+
+q('logoutBtn').addEventListener('click', async () => { await api('/api/logout', { method: 'POST' }); await load(); });
+
+q('saveAccountBtn').addEventListener('click', async () => {
+  const notice = q('accountNotice');
   try {
-    const data = await api('/api/otp/send', { method: 'POST', body: { phone: document.getElementById('phone').value, purpose: 'LOGIN' } });
+    const { user } = await api('/api/me', { method: 'PATCH', body: { name: q('accountName').value.trim() } });
     notice.className = 'notice ok';
-    notice.textContent = `کد ارسال شد${data.devCode ? ` — کد آزمایشی: ${data.devCode}` : ''}`;
-  } catch (error) { notice.className = 'notice danger'; notice.textContent = error.message; }
-};
+    notice.textContent = 'ذخیره شد.';
+    q('hubGreeting').textContent = user.name ? `سلام ${user.name}` : 'حساب من';
+  } catch (error) {
+    notice.className = 'notice danger';
+    notice.textContent = error.message;
+  }
+});
 
-document.getElementById('verifyOtp').onclick = async () => {
-  try {
-    await api('/api/otp/verify', { method: 'POST', body: { phone: document.getElementById('phone').value, code: document.getElementById('code').value, name: document.getElementById('name').value, purpose: 'LOGIN' } });
-    await loadMe();
-  } catch (error) { notice.className = 'notice danger'; notice.textContent = error.message; }
-};
+async function load() {
+  const { user } = await api('/api/me');
+  if (!user) { showLoginGate(); return; }
+  showHub(user);
+  const { reservations } = await api('/api/reservations/profile/list');
+  renderReservations(reservations);
+}
 
-document.getElementById('logout').onclick = async () => { await api('/api/logout', { method: 'POST' }); location.reload(); };
-
-loadMe().catch((error) => { box.innerHTML = `<div class="notice danger">${error.message}</div>`; });
+load().catch((error) => { q('reservationsBox').innerHTML = `<div class="notice danger">${error.message}</div>`; });

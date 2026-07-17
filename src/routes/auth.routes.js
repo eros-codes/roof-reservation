@@ -1,9 +1,11 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
+import rateLimit from 'express-rate-limit';
 import { prisma } from '../lib/prisma.js';
-import { clearCookie, setCookie, signAdminToken, signGuestToken, signUserToken } from '../lib/auth.js';
+import { clearCookie, setCookie, signAdminToken, signGuestToken, signUserToken, verifyUserToken } from '../lib/auth.js';
 import { normalizePhone } from '../lib/time.js';
 import { otpMessage, sendMockSms } from '../lib/sms.js';
+import { config } from '../config.js';
 
 export const authRouter = express.Router();
 
@@ -11,30 +13,44 @@ function makeOtpCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
-authRouter.post('/otp/send', async (req, res, next) => {
+const otpKey = (req) => `${req.ip}:${normalizePhone(req.body.phone)}`;
+const otpSendLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 5, keyGenerator: otpKey, message: { message: 'تعداد درخواست بیش از حد مجاز است؛ کمی بعد دوباره تلاش کن.' } });
+const otpVerifyLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 10, keyGenerator: otpKey, message: { message: 'تعداد تلاش بیش از حد مجاز است؛ کمی بعد دوباره تلاش کن.' } });
+const adminLoginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 8, message: { message: 'تعداد تلاش بیش از حد مجاز است؛ کمی بعد دوباره تلاش کن.' } });
+
+authRouter.post('/otp/send', otpSendLimiter, async (req, res, next) => {
   try {
     const phone = normalizePhone(req.body.phone);
     const purpose = req.body.purpose || 'LOGIN';
-    if (!phone) return res.status(400).json({ message: 'شماره موبایل لازم است.' });
+    if (!phone) return res.status(400).json({ message: 'شماره موبایل نامعتبر است.' });
     const code = makeOtpCode();
+    const codeHash = await bcrypt.hash(code, 10);
     const expiresAt = new Date(Date.now() + 2 * 60 * 1000);
-    await prisma.otpCode.create({ data: { phone, purpose, code, expiresAt } });
+    await prisma.otpCode.create({ data: { phone, purpose, codeHash, expiresAt } });
     await sendMockSms({ phone, type: 'OTP', message: otpMessage(code) });
-    res.json({ message: 'کد تایید ارسال شد.', devCode: code });
+    res.json({ message: 'کد تایید ارسال شد.', ...(config.isProd ? {} : { devCode: code }) });
   } catch (error) {
     next(error);
   }
 });
 
-authRouter.post('/otp/verify', async (req, res, next) => {
+authRouter.post('/otp/verify', otpVerifyLimiter, async (req, res, next) => {
   try {
     const phone = normalizePhone(req.body.phone);
     const { code, name, purpose = 'LOGIN', trackingCode } = req.body;
+    if (!phone) return res.status(400).json({ message: 'شماره موبایل نامعتبر است.' });
+
     const otp = await prisma.otpCode.findFirst({
-      where: { phone, purpose, code, consumedAt: null, expiresAt: { gt: new Date() } },
+      where: { phone, purpose, consumedAt: null, expiresAt: { gt: new Date() } },
       orderBy: { createdAt: 'desc' }
     });
-    if (!otp) return res.status(400).json({ message: 'کد تایید اشتباه یا منقضی است.' });
+    if (!otp || otp.attempts >= 5) return res.status(400).json({ message: 'کد تایید اشتباه یا منقضی است.' });
+
+    const match = await bcrypt.compare(String(code || ''), otp.codeHash);
+    if (!match) {
+      await prisma.otpCode.update({ where: { id: otp.id }, data: { attempts: { increment: 1 } } });
+      return res.status(400).json({ message: 'کد تایید اشتباه یا منقضی است.' });
+    }
     await prisma.otpCode.update({ where: { id: otp.id }, data: { consumedAt: new Date() } });
 
     if (purpose === 'GUEST_ACCESS') {
@@ -61,12 +77,24 @@ authRouter.get('/me', async (req, res, next) => {
   try {
     const token = req.cookies?.userToken;
     if (!token) return res.json({ user: null });
-    const { verifyUserToken } = await import('../lib/auth.js');
     const payload = verifyUserToken(token);
     const user = await prisma.user.findUnique({ where: { id: payload.sub } });
     res.json({ user });
   } catch (_) {
     res.json({ user: null });
+  }
+});
+
+authRouter.patch('/me', async (req, res, next) => {
+  try {
+    const token = req.cookies?.userToken;
+    if (!token) return res.status(401).json({ message: 'وارد نشده‌ای.' });
+    const payload = verifyUserToken(token);
+    const user = await prisma.user.update({ where: { id: payload.sub }, data: { name: req.body.name || null } });
+    res.json({ user });
+  } catch (error) {
+    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') return res.status(401).json({ message: 'وارد نشده‌ای.' });
+    next(error);
   }
 });
 
@@ -76,7 +104,7 @@ authRouter.post('/logout', (_req, res) => {
   res.json({ message: 'خروج انجام شد.' });
 });
 
-authRouter.post('/admin/login', async (req, res, next) => {
+authRouter.post('/admin/login', adminLoginLimiter, async (req, res, next) => {
   try {
     const { email, password } = req.body;
     const admin = await prisma.adminUser.findUnique({ where: { email } });
