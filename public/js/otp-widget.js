@@ -1,17 +1,22 @@
 import { api } from './api.js';
 
-/**
- * یه فرم OTP قابل‌استفاده هم برای ورود کاربر (purpose=LOGIN) هم دسترسی مهمان
- * (purpose=GUEST_ACCESS). به‌جای اینکه هر صفحه پیاده‌سازی جدا داشته باشه،
- * همه از همینجا استفاده می‌کنن.
- *
- * extraFields: فیلدهای اضافه قبل از شماره موبایل (مثلاً کد پیگیری برای مهمان)
- * onVerified(data): بعد از تایید موفق صدا زده می‌شه؛ data همون پاسخ /api/otp/verify‌ه
- */
+function escapeHtml(str) {
+	return String(str).replace(
+		/[&<>"']/g,
+		(c) =>
+			({
+				"&": "&amp;",
+				"<": "&lt;",
+				">": "&gt;",
+				'"': "&quot;",
+				"'": "&#39;",
+			})[c],
+	);
+}
 export function mountOtpWidget(container, { purpose, extraFields = [], submitLabel = 'تایید', onVerified }) {
   container.innerHTML = `
     <div class="form-grid otp-widget">
-      ${extraFields.map((f) => `<div class="field"><label>${f.label}</label><input data-otp-extra="${f.key}" placeholder="${f.placeholder || ''}"></div>`).join('')}
+      ${extraFields.map((f) => `<div class="field"><label>${escapeHtml(f.label)}</label><input data-otp-extra="${f.key}" placeholder="${escapeHtml(f.placeholder || '')}"></div>`).join('')}
       <div class="field"><label>شماره موبایل</label><input data-otp-phone placeholder="09..." inputmode="tel"></div>
       <button type="button" class="secondary-btn" data-otp-send>ارسال کد تایید</button>
       <div class="field" data-otp-code-field hidden><label>کد تایید</label><input data-otp-code inputmode="numeric" maxlength="6"></div>
@@ -39,7 +44,8 @@ export function mountOtpWidget(container, { purpose, extraFields = [], submitLab
     btn.disabled = true;
     try {
       const data = await api('/api/otp/send', { method: 'POST', body: { phone, purpose } });
-      showNotice(`کد ارسال شد${data.devCode ? ` — کد آزمایشی: ${data.devCode}` : ''}`, 'ok');
+      const isLocalDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+      showNotice(`کد ارسال شد${data.devCode && isLocalDev ? ` — کد آزمایشی: ${data.devCode}` : ''}`, 'ok');
       q('[data-otp-code-field]').hidden = false;
       q('[data-otp-verify]').hidden = false;
       q('[data-otp-code]').focus();

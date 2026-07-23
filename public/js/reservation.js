@@ -98,12 +98,24 @@ function setMode(mode) {
 document.querySelectorAll('.mode-tabs button').forEach((button) => {
   button.addEventListener('click', () => setMode(button.dataset.mode));
 });
-
+function escapeHtml(str) {
+	return String(str).replace(
+		/[&<>"']/g,
+		(c) =>
+			({
+				"&": "&amp;",
+				"<": "&lt;",
+				">": "&gt;",
+				'"': "&quot;",
+				"'": "&#39;",
+			})[c],
+	);
+}
 /* ---------- selection + detail panel ---------- */
 function detailCard(title, lines, showAction = false) {
   return `
-    <h4>${title}</h4>
-    ${lines.map((line) => `<p>${line}</p>`).join('')}
+    <h4>${escapeHtml(title)}</h4>
+    ${lines.map((line) => `<p>${escapeHtml(line)}</p>`).join('')}
     ${showAction ? `<button class="primary-btn" id="openReserve" style="margin-top:10px">${ICONS.check}<span>ادامه رزرو</span></button>` : ''}
   `;
 }
@@ -172,6 +184,7 @@ function openReserveModal() {
   if (!state.selectedTableIds.length) return;
   const guests = Number(el('guestCount').value);
   const price = state.config.settings.pricePerGuest * guests;
+  el('modalSummary').className = 'notice';
   el('modalSummary').innerHTML = `${state.selectedLabel}<br>تعداد نفرات: ${guests.toLocaleString('fa-IR')}<br>مبلغ: ${toman(price)}`;
   if (state.currentUser) {
     el('customerName').value = state.currentUser.name || '';
@@ -249,8 +262,8 @@ el('reserveForm').addEventListener('submit', async (event) => {
       startTime: selectedStartTime(),
       durationMinutes: state.duration,
       guestCount: Number(el('guestCount').value),
-      customerName: el('customerName').value,
-      customerPhone: el('customerPhone').value
+      customerName: el('customerName').value.trim().slice(0, 80),
+      customerPhone: el('customerPhone').value.trim()
     };
     const { reservation } = await api('/api/reservations/hold', { method: 'POST', body });
     window.location.href = `/payment.html?id=${reservation.id}`;

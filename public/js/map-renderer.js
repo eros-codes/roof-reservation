@@ -412,15 +412,6 @@ export class RoofMap {
     this.render();
   }
 
-  updateTableGeometry(tableId, geometry) {
-    const table = this.tables.find((item) => item.id === tableId);
-    if (!table) return;
-    Object.assign(table, geometry);
-    const node = this.tableNodes.get(tableId);
-    if (node) node.setAttribute('transform', `translate(${rounded(table.x)} ${rounded(table.y)})`);
-    this.drawComboConnector();
-  }
-
   render() {
     this.tableLayer.innerHTML = '';
     this.comboLayer.innerHTML = '';
@@ -474,10 +465,16 @@ export class RoofMap {
   bindTableEvents(anchor, table) {
     let moved = false;
     anchor.addEventListener('click', (event) => {
+      if (this.editable) return;
       if (moved) {
         moved = false;
         return;
       }
+      event.stopPropagation();
+      this.onTableClick?.(table);
+    });
+    anchor.addEventListener('dblclick', (event) => {
+      if (!this.editable) return;
       event.stopPropagation();
       this.onTableClick?.(table);
     });
@@ -505,7 +502,6 @@ export class RoofMap {
       };
       anchor.setPointerCapture(event.pointerId);
       anchor.classList.add('is-dragging');
-      this.onTableClick?.(table);
     });
     anchor.addEventListener('pointermove', (event) => {
       if (!this.drag || this.drag.pointerId !== event.pointerId) return;
@@ -515,7 +511,7 @@ export class RoofMap {
       if (Math.abs(dx) + Math.abs(dy) > 1.5) moved = true;
       table.x = rounded(this.drag.original.x + dx);
       table.y = rounded(this.drag.original.y + dy);
-      anchor.setAttribute('transform', `translate(${table.x} ${table.y}) rotate(${rounded(table.rotation || 0)})`);
+      anchor.setAttribute('transform', `translate(${table.x} ${table.y})`);
       this.onTableMove?.(table, { live: true });
       this.drawComboConnector();
     });
@@ -532,22 +528,21 @@ export class RoofMap {
   }
 
   drawComboConnector() {
-    this.comboLayer.innerHTML = '';
-    if (this.selectedIds.length !== 2) return;
+    if (this.selectedIds.length !== 2) { this.comboLayer.innerHTML = ''; return; }
     const [a, b] = this.selectedIds.map((id) => this.tables.find((table) => table.id === id));
-    if (!a || !b) return;
+    if (!a || !b) { this.comboLayer.innerHTML = ''; return; }
     const midX = (Number(a.x) + Number(b.x)) / 2;
     const midY = Math.min(Number(a.y), Number(b.y)) - 45;
-    const path = svgEl('path', {
-      class: 'combo-connector',
-      d: `M${a.x} ${a.y}Q${midX} ${midY} ${b.x} ${b.y}`
-    });
-    const badge = svgEl('g', { class: 'combo-badge', transform: `translate(${midX} ${midY - 3})` });
-    badge.append(
-      svgEl('circle', { r: 16 }),
-      svgEl('text', { x: 0, y: 1, 'text-anchor': 'middle', 'dominant-baseline': 'middle' })
-    );
-    badge.querySelector('text').textContent = '+';
-    this.comboLayer.append(path, badge);
+    let path = this.comboLayer.querySelector('.combo-connector');
+    let badge = this.comboLayer.querySelector('.combo-badge');
+    if (!path) {
+      path = svgEl('path', { class: 'combo-connector' });
+      badge = svgEl('g', { class: 'combo-badge' });
+      badge.append(svgEl('circle', { r: 16 }), svgEl('text', { x: 0, y: 1, 'text-anchor': 'middle', 'dominant-baseline': 'middle' }));
+      badge.querySelector('text').textContent = '+';
+      this.comboLayer.append(path, badge);
+    }
+    path.setAttribute('d', `M${a.x} ${a.y}Q${midX} ${midY} ${b.x} ${b.y}`);
+    badge.setAttribute('transform', `translate(${midX} ${midY - 3})`);
   }
 }

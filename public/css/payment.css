@@ -1,0 +1,60 @@
+/* payment.css — مخصوص payment.html: حالت‌های نتیجه‌ی پرداخت (موفق/ناموفق/نیاز بررسی). */
+
+/* ==========================================================================
+   Result states (payment success / fail)
+   ========================================================================== */
+
+.result-state {
+	text-align: center;
+	padding: 26px 16px;
+	display: grid;
+	gap: 12px;
+	justify-items: center;
+}
+.result-icon {
+	width: 60px;
+	height: 60px;
+	border-radius: 50%;
+	border: 1px solid var(--line);
+	display: grid;
+	place-items: center;
+	animation: pop 0.4s var(--ease) both;
+}
+.result-icon svg {
+	width: 26px;
+	height: 26px;
+}
+.result-icon.ok {
+	border-color: rgba(110, 129, 81, 0.4);
+	color: var(--ok-ink);
+}
+.result-icon.warn {
+	border-color: rgba(150, 112, 60, 0.4);
+	color: var(--warn-ink);
+}
+.result-icon.fail {
+	border-color: rgba(122, 63, 53, 0.4);
+	color: var(--danger-ink);
+}
+.result-state h3 {
+	font-family: var(--font-serif);
+	color: var(--rich-sabel);
+	font-size: 18px;
+}
+.result-state p {
+	color: var(--deep-taupe);
+	font-size: 13.5px;
+	line-height: 1.8;
+	max-width: 340px;
+}
+.tracking-code {
+	font-family: var(--font-serif);
+	font-size: 20px;
+	font-weight: 700;
+	color: var(--rich-sabel);
+	letter-spacing: 0.02em;
+	padding: 8px 16px;
+	border: 1px dashed var(--line);
+	border-radius: var(--r-xs);
+}
+

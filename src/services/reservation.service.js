@@ -1,6 +1,5 @@
 import { prisma } from '../lib/prisma.js';
 import { addMinutes, combineDateAndTime, generateInvoiceNumber, generateTrackingCode } from '../lib/time.js';
-import { createMockAuthority } from '../lib/payment.js';
 import { getSettings, numberSetting } from './settings.service.js';
 import { assertTablesAvailable } from './availability.service.js';
 
@@ -35,7 +34,6 @@ export async function createReservationHold({ tableIds, date, startTime, duratio
   const trackingCode = await uniqueTrackingCode();
   const invoiceNumber = await uniqueInvoiceNumber();
   const holdExpiresAt = addMinutes(new Date(), holdMinutes);
-  const authority = createMockAuthority();
 
   return prisma.reservation.create({
     data: {
@@ -60,10 +58,9 @@ export async function createReservationHold({ tableIds, date, startTime, duratio
         create: {
           amount: totalAmount,
           status: source === 'ADMIN_MANUAL' ? 'PAID' : 'PENDING',
-          method: source === 'ADMIN_MANUAL' ? 'MANUAL' : 'MOCK',
-          provider: source === 'ADMIN_MANUAL' ? 'manual' : 'mock',
-          authority,
-          isMock: source !== 'ADMIN_MANUAL'
+          method: source === 'ADMIN_MANUAL' ? 'MANUAL' : 'ZARINPAL',
+          provider: source === 'ADMIN_MANUAL' ? 'manual' : 'zarinpal',
+          isMock: false
         }
       }
     },

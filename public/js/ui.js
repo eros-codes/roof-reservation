@@ -51,6 +51,11 @@ export function mountHoldRing(container, expiresAt, { totalSeconds, onExpire, on
   function tick() {
     if (stopped) return;
     const remainMs = new Date(expiresAt) - Date.now();
+    if (!Number.isFinite(remainMs)) {
+      stopped = true;
+      if (onExpire) onExpire();
+      return;
+    }
     const remain = Math.max(0, Math.ceil(remainMs / 1000));
     const ratio = Math.max(0, Math.min(1, remain / total));
     progress.setAttribute('stroke-dashoffset', String(circumference * (1 - ratio)));
@@ -64,7 +69,7 @@ export function mountHoldRing(container, expiresAt, { totalSeconds, onExpire, on
       if (onExpire) onExpire();
       return;
     }
-    requestAnimationFrame(() => setTimeout(tick, 250));
+    setTimeout(tick, 250);
   }
   tick();
   return { stop: () => { stopped = true; } };
@@ -79,7 +84,8 @@ export function createSheetController(panelEl) {
   handle.className = 'sheet-handle';
   panelEl.prepend(handle);
 
-  function isMobile() { return window.matchMedia('(max-width: 860px)').matches; }
+  const mobileQuery = window.matchMedia('(max-width: 860px)');
+  function isMobile() { return mobileQuery.matches; }
   function open() {
     if (!isMobile()) return;
     panelEl.classList.add('as-sheet', 'open');
@@ -95,7 +101,8 @@ export function createSheetController(panelEl) {
 }
 
 export function faHours(minutes) {
-  return (minutes / 60).toLocaleString('fa-IR');
+  const n = Number(minutes);
+  return (Number.isFinite(n) ? n / 60 : 0).toLocaleString('fa-IR');
 }
 
 /** Toggles .is-scrolled on the header past 55px — same threshold as the About page. */

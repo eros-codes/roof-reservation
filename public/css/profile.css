@@ -1,0 +1,65 @@
+/* profile.css — مخصوص profile.html: تایم‌لاین رزروها. */
+
+/* ==========================================================================
+   Timeline (profile)
+   ========================================================================== */
+
+.timeline {
+	display: grid;
+	gap: 10px;
+}
+.timeline-item {
+	display: grid;
+	grid-template-columns: auto 1fr auto;
+	align-items: center;
+	gap: 14px;
+	padding: 14px 16px;
+	border-radius: var(--r-sm);
+	background: rgba(255, 255, 255, 0.3);
+	border: 1px solid var(--line);
+	transition:
+		border-color 0.25s ease,
+		box-shadow 0.25s ease;
+}
+.timeline-item:hover {
+	border-color: var(--rich-sabel);
+	box-shadow: var(--shadow);
+}
+.timeline-date {
+	width: 42px;
+	text-align: center;
+}
+.timeline-date strong {
+	display: block;
+	font-family: var(--font-serif);
+	font-size: 19px;
+	color: var(--rich-sabel);
+	line-height: 1;
+}
+.timeline-date span {
+	display: block;
+	font-size: 10.5px;
+	color: var(--deep-taupe);
+	margin-top: 2px;
+}
+.timeline-body strong {
+	display: block;
+	color: var(--rich-sabel);
+	font-size: 13.5px;
+}
+.timeline-body span {
+	color: var(--deep-taupe);
+	font-size: 12px;
+	opacity: 0.85;
+}
+.timeline-actions {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: flex-end;
+}
+section.grid>section.card-pad{
+  min-height: 200px;
+}
+

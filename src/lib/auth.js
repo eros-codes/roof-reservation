@@ -13,16 +13,22 @@ export function signAdminToken(admin) {
   return jwt.sign({ sub: admin.id, email: admin.email, role: admin.role, type: 'admin' }, config.adminJwtSecret, { expiresIn: '12h' });
 }
 
+function verifyTyped(token, secret, expectedType) {
+	const payload = jwt.verify(token, secret);
+	if (payload.type !== expectedType) throw new Error("نوع توکن نامعتبر است.");
+	return payload;
+}
+
 export function verifyUserToken(token) {
-  return jwt.verify(token, config.jwtSecret);
+	return verifyTyped(token, config.jwtSecret, "user");
 }
 
 export function verifyAdminToken(token) {
-  return jwt.verify(token, config.adminJwtSecret);
+	return verifyTyped(token, config.adminJwtSecret, "admin");
 }
 
 export function verifyGuestToken(token) {
-  return jwt.verify(token, config.jwtSecret);
+	return verifyTyped(token, config.jwtSecret, "guest");
 }
 
 const COOKIE_MAX_AGE = {

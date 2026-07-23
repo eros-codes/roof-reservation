@@ -67,7 +67,11 @@ function switchSection(name) {
 }
 
 el('adminLogout').addEventListener('click', async () => {
-  await api('/api/admin/logout', { method: 'POST' });
+  try {
+    await api('/api/admin/logout', { method: 'POST' });
+  } catch (error) {
+    console.warn('خروج با خطا مواجه شد:', error);
+  }
   location.href = '/admin-login.html';
 });
 
@@ -101,6 +105,19 @@ function statusOptions() {
     ${state.admin.role !== 'RECEPTION' ? '<option value="CONFIRMED">تایید</option>' : ''}`;
 }
 
+function escapeHtml(str) {
+	return String(str).replace(
+		/[&<>"']/g,
+		(c) =>
+			({
+				"&": "&amp;",
+				"<": "&lt;",
+				">": "&gt;",
+				'"': "&quot;",
+				"'": "&#39;",
+			})[c],
+	);
+}
 async function loadReservations() {
   el('reservationBox').innerHTML = '<div class="skeleton" style="height:180px"></div>';
   const { reservations } = await api('/api/admin/reservations');
@@ -109,10 +126,10 @@ async function loadReservations() {
     return;
   }
 
-  el('reservationBox').innerHTML = `<div class="table-scroll"><table class="table-list"><thead><tr><th>کد</th><th>مشتری</th><th>زمان</th><th>میز</th><th>مبلغ</th><th>وضعیت</th><th>عملیات</th></tr></thead><tbody>${reservations.map((reservation) => `
+  el('reservationBox').innerHTML = `<div id="reservationsNotice"></div><div class="table-scroll"><table class="table-list"><thead><tr><th>کد</th><th>مشتری</th><th>زمان</th><th>میز</th><th>مبلغ</th><th>وضعیت</th><th>عملیات</th></tr></thead><tbody>${reservations.map((reservation) => `
     <tr>
       <td>${reservation.trackingCode}</td>
-      <td>${reservation.customerName}<br><small style="color:var(--deep-taupe)">${reservation.customerPhone}</small></td>
+      <td>${escapeHtml(reservation.customerName)}<br><small style="color:var(--deep-taupe)">${escapeHtml(reservation.customerPhone)}</small></td>
       <td>${faDateTime(reservation.startAt)}</td>
       <td>${reservation.tables.map((item) => item.table.displayNumber).join(' و ')}</td>
       <td>${toman(reservation.totalAmount)}</td>
@@ -123,8 +140,14 @@ async function loadReservations() {
   document.querySelectorAll('[data-status]').forEach((select) => {
     select.addEventListener('change', async () => {
       if (!select.value) return;
-      await api(`/api/admin/reservations/${select.dataset.status}/status`, { method: 'PATCH', body: { status: select.value } });
-      await Promise.all([loadReservations(), loadDashboard()]);
+      const notice = el('reservationsNotice');
+      try {
+        await api(`/api/admin/reservations/${select.dataset.status}/status`, { method: 'PATCH', body: { status: select.value } });
+        await Promise.all([loadReservations(), loadDashboard()]);
+      } catch (error) {
+        notice.className = 'notice danger';
+        notice.textContent = error.message;
+      }
     });
   });
 }
@@ -149,7 +172,7 @@ function renderDurationChips() {
 document.querySelectorAll('[data-mstep]').forEach((button) => {
   button.addEventListener('click', () => {
     const input = el('mGuests');
-    input.value = Math.max(1, Number(input.value || 1) + Number(button.dataset.mstep));
+    input.value = Math.min(20, Math.max(1, Number(input.value || 1) + Number(button.dataset.mstep)));
   });
 });
 
@@ -204,7 +227,7 @@ el('addTableBtn').addEventListener('click', () => state.mapEditor?.openCreateDia
 /* ---------- tables + map management ---------- */
 function renderTableList() {
   el('tableCount').textContent = `${state.tables.length.toLocaleString('fa-IR')} میز`;
-  el('tableBox').innerHTML = `<div class="table-scroll"><table class="table-list"><thead><tr><th>کد</th><th>شماره</th><th>سالن</th><th>شکل</th><th>ظرفیت</th><th>حداقل/حداکثر</th><th>وضعیت</th><th>عملیات</th></tr></thead><tbody>${state.tables.map((table) => `
+  el('tableBox').innerHTML = `<div id="tableListNotice"></div><div class="table-scroll"><table class="table-list"><thead><tr><th>کد</th><th>شماره</th><th>سالن</th><th>شکل</th><th>ظرفیت</th><th>حداقل/حداکثر</th><th>وضعیت</th><th>عملیات</th></tr></thead><tbody>${state.tables.map((table) => `
     <tr>
       <td>${table.code}</td>
       <td>${table.displayNumber}</td>
@@ -229,8 +252,14 @@ function renderTableList() {
   document.querySelectorAll('[data-toggle-table]').forEach((button) => {
     button.addEventListener('click', async () => {
       const table = state.tables.find((item) => item.id === button.dataset.toggleTable);
-      await api(`/api/admin/tables/${table.id}`, { method: 'PATCH', body: { isActive: !table.isActive } });
-      await loadTables({ keepSelectedId: table.id });
+      const notice = el('tableListNotice');
+      try {
+        await api(`/api/admin/tables/${table.id}`, { method: 'PATCH', body: { isActive: !table.isActive } });
+        await loadTables({ keepSelectedId: table.id });
+      } catch (error) {
+        notice.className = 'notice danger';
+        notice.textContent = error.message;
+      }
     });
   });
 }
@@ -259,7 +288,7 @@ async function loadTables(options = {}) {
 /* ---------- working hours ---------- */
 async function loadHours() {
   const { workingHours } = await api('/api/admin/working-hours');
-  el('hoursBox').innerHTML = `<div class="table-scroll"><table class="table-list"><thead><tr><th>روز</th><th>از ساعت</th><th>تا ساعت</th><th>تعطیل</th><th></th></tr></thead><tbody>${workingHours.map((hour) => `
+  el('hoursBox').innerHTML = `<div id="hoursNotice"></div><div class="table-scroll"><table class="table-list"><thead><tr><th>روز</th><th>از ساعت</th><th>تا ساعت</th><th>تعطیل</th><th></th></tr></thead><tbody>${workingHours.map((hour) => `
     <tr>
       <td>${DAY_FA[hour.dayOfWeek]}</td>
       <td><input value="${hour.opensAt}" data-open="${hour.dayOfWeek}" style="max-width:100px"></td>
@@ -271,15 +300,21 @@ async function loadHours() {
   document.querySelectorAll('[data-save-hour]').forEach((button) => {
     button.addEventListener('click', async () => {
       const day = button.dataset.saveHour;
-      await api(`/api/admin/working-hours/${day}`, {
-        method: 'PATCH',
-        body: {
-          opensAt: q(`[data-open="${day}"]`).value,
-          closesAt: q(`[data-close="${day}"]`).value,
-          isClosed: q(`[data-closed="${day}"]`).checked
-        }
-      });
-      await loadHours();
+      const notice = el('hoursNotice');
+      try {
+        await api(`/api/admin/working-hours/${day}`, {
+          method: 'PATCH',
+          body: {
+            opensAt: q(`[data-open="${day}"]`).value,
+            closesAt: q(`[data-close="${day}"]`).value,
+            isClosed: q(`[data-closed="${day}"]`).checked
+          }
+        });
+        await loadHours();
+      } catch (error) {
+        notice.className = 'notice danger';
+        notice.textContent = error.message;
+      }
     });
   });
 }
@@ -288,6 +323,7 @@ async function loadHours() {
 async function loadClosures() {
   const { closures } = await api('/api/admin/closures');
   el('closuresBox').innerHTML = `
+    <div id="closuresNotice"></div>
     <div class="form-grid" style="margin-bottom:20px">
       <div class="row"><div class="field"><label>عنوان تعطیلی</label><input id="cTitle" placeholder="مثلاً تعطیلی رسمی"></div><div class="field"><label>تاریخ</label><input id="cDate" type="date"></div></div>
       <div class="row"><div class="field"><label>از ساعت (اختیاری)</label><input id="cStart" type="time" step="900"></div><div class="field"><label>تا ساعت (اختیاری)</label><input id="cEnd" type="time" step="900"></div></div>
@@ -306,24 +342,34 @@ async function loadClosures() {
       </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--deep-taupe)">تعطیلی ثبت نشده</td></tr>'}</tbody></table></div>`;
 
   el('addClosure').addEventListener('click', async () => {
-    await api('/api/admin/closures', {
-      method: 'POST',
-      body: {
-        title: el('cTitle').value,
-        date: el('cDate').value,
-        startTime: el('cStart').value || null,
-        endTime: el('cEnd').value || null,
-        zone: el('cZone').value || null,
-        tableId: el('cTable').value || null
-      }
-    });
-    await loadClosures();
+    try {
+      await api('/api/admin/closures', {
+        method: 'POST',
+        body: {
+          title: el('cTitle').value,
+          date: el('cDate').value,
+          startTime: el('cStart').value || null,
+          endTime: el('cEnd').value || null,
+          zone: el('cZone').value || null,
+          tableId: el('cTable').value || null
+        }
+      });
+      await loadClosures();
+    } catch (error) {
+      el('closuresNotice').className = 'notice danger';
+      el('closuresNotice').textContent = error.message;
+    }
   });
 
   document.querySelectorAll('[data-del-closure]').forEach((button) => {
     button.addEventListener('click', async () => {
-      await api(`/api/admin/closures/${button.dataset.delClosure}`, { method: 'DELETE' });
-      await loadClosures();
+      try {
+        await api(`/api/admin/closures/${button.dataset.delClosure}`, { method: 'DELETE' });
+        await loadClosures();
+      } catch (error) {
+        el('closuresNotice').className = 'notice danger';
+        el('closuresNotice').textContent = error.message;
+      }
     });
   });
 }
@@ -340,9 +386,14 @@ async function loadSettings() {
   el('saveSettings').addEventListener('click', async () => {
     const body = {};
     SETTINGS_FIELDS.forEach(([key]) => { body[key] = el(`set-${key}`).value; });
-    await api('/api/admin/settings', { method: 'PATCH', body });
-    el('settingsNotice').className = 'notice ok';
-    el('settingsNotice').textContent = 'تنظیمات ذخیره شد.';
+    try {
+      await api('/api/admin/settings', { method: 'PATCH', body });
+      el('settingsNotice').className = 'notice ok';
+      el('settingsNotice').textContent = 'تنظیمات ذخیره شد.';
+    } catch (error) {
+      el('settingsNotice').className = 'notice danger';
+      el('settingsNotice').textContent = error.message;
+    }
   });
 }
 

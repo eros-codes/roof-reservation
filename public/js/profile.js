@@ -8,6 +8,7 @@ const q = (id) => document.getElementById(id);
 
 function dateBlock(iso) {
   const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return `<div class="timeline-date"><strong>—</strong><span>—</span></div>`;
   return `<div class="timeline-date"><strong>${d.toLocaleDateString('fa-IR', { day: 'numeric' })}</strong><span>${d.toLocaleDateString('fa-IR', { month: 'short' })}</span></div>`;
 }
 
@@ -62,7 +63,14 @@ q('hubTabs').addEventListener('click', (event) => {
   document.querySelectorAll('[data-tab-panel]').forEach((p) => p.classList.toggle('active', p.dataset.tabPanel === btn.dataset.tab));
 });
 
-q('logoutBtn').addEventListener('click', async () => { await api('/api/logout', { method: 'POST' }); await load(); });
+q('logoutBtn').addEventListener('click', async () => {
+  try {
+    await api('/api/logout', { method: 'POST' });
+  } catch (error) {
+    console.warn('خروج با خطا مواجه شد:', error);
+  }
+  await load();
+});
 
 q('saveAccountBtn').addEventListener('click', async () => {
   const notice = q('accountNotice');
@@ -78,11 +86,17 @@ q('saveAccountBtn').addEventListener('click', async () => {
 });
 
 async function load() {
-  const { user } = await api('/api/me');
-  if (!user) { showLoginGate(); return; }
-  showHub(user);
-  const { reservations } = await api('/api/reservations/profile/list');
-  renderReservations(reservations);
+  try {
+    const { user } = await api('/api/me');
+    if (!user) { showLoginGate(); return; }
+    showHub(user);
+    const { reservations } = await api('/api/reservations/profile/list');
+    renderReservations(reservations);
+  } catch (error) {
+    showLoginGate();
+    const notice = q('loginGateForm').querySelector('[data-otp-notice]');
+    if (notice) { notice.className = 'notice danger'; notice.textContent = error.message; }
+  }
 }
 
-load().catch((error) => { q('reservationsBox').innerHTML = `<div class="notice danger">${error.message}</div>`; });
+load();

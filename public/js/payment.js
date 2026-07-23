@@ -4,62 +4,71 @@ import { ICONS, mountHoldRing, initHeaderScroll } from './ui.js';
 initHeaderScroll();
 
 const id = new URLSearchParams(location.search).get('id');
+const resultParam = new URLSearchParams(location.search).get('result');
 const box = document.getElementById('paymentBox');
 let reservation = null;
 let ring = null;
 
 function tablesText(r) { return r.tables.map((rt) => rt.table.displayNumber).join(' و '); }
 function endTimeText(r) { return new Date(r.endAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }); }
+function escapeHtml(str) {
+	return String(str).replace(
+		/[&<>"']/g,
+		(c) =>
+			({
+				"&": "&amp;",
+				"<": "&lt;",
+				">": "&gt;",
+				'"': "&quot;",
+				"'": "&#39;",
+			})[c],
+	);
+}
 function row(icon, label, value) {
-  return `<div class="detail-row"><span class="ico">${icon}</span><span>${label}: <strong>${value}</strong></span></div>`;
+  return `<div class="detail-row"><span class="ico">${icon}</span><span>${escapeHtml(label)}: <strong>${escapeHtml(value)}</strong></span></div>`;
 }
 
 function renderInvalid(message) {
   box.innerHTML = `<h3>پرداخت</h3><div class="notice danger">${message}</div><div class="actions"><a class="primary-btn" href="/">رزرو جدید</a></div>`;
 }
 
-function renderExpired() {
+function renderExpired(title = 'زمان نگه‌داری تمام شد', message = 'میز دیگر برات نگه داشته نمی‌شه؛ از صفحه‌ی رزرو دوباره انتخاب کن.') {
   if (ring) ring.stop();
   box.innerHTML = `
     <div class="result-state">
       <div class="result-icon warn">${ICONS.clock}</div>
-      <h3>زمان نگه‌داری تمام شد</h3>
-      <p>میز دیگر برات نگه داشته نمی‌شه؛ از صفحه‌ی رزرو دوباره انتخاب کن.</p>
+      <h3>${title}</h3>
+      <p>${message}</p>
       <a class="primary-btn" href="/" style="max-width:200px">انتخاب دوباره</a>
     </div>`;
 }
 
-function renderResult(kind, data) {
+function renderSuccess() {
   if (ring) ring.stop();
-  if (kind === 'success') {
-    box.innerHTML = `
-      <div class="result-state">
-        <div class="result-icon ok">${ICONS.check}</div>
-        <h3>پرداخت موفق بود</h3>
-        <p>رزروت تایید شد.</p>
-        <div class="tracking-code">${reservation.trackingCode}</div>
-      </div>`;
-    setTimeout(() => { location.href = `/invoice.html?id=${reservation.id}`; }, 1400);
-    return;
-  }
-  if (kind === 'fail') {
-    box.innerHTML = `
-      <div class="result-state">
-        <div class="result-icon fail">${ICONS.x}</div>
-        <h3>پرداخت ناموفق بود</h3>
-        <p>${data?.message || 'میز تا پایان زمان نگه‌داری همچنان براته.'}</p>
-        <button class="primary-btn" id="retryPay" style="max-width:180px">تلاش دوباره</button>
-      </div>`;
-    document.getElementById('retryPay').addEventListener('click', () => init());
-    return;
-  }
   box.innerHTML = `
     <div class="result-state">
-      <div class="result-icon warn">${ICONS.clock}</div>
-      <h3>در حال بررسی پرداخت</h3>
-      <p>${data?.message || 'نتیجه هنوز مشخص نیست؛ بعد از بررسی نهایی می‌شود.'}</p>
-      <a class="secondary-btn" href="/profile.html">پیگیری از پروفایل</a>
+      <div class="result-icon ok">${ICONS.check}</div>
+      <h3>پرداخت موفق بود</h3>
+      <p>رزروت تایید شد.</p>
+      <div class="tracking-code">${reservation.trackingCode}</div>
     </div>`;
+  setTimeout(() => { location.href = `/invoice.html?id=${reservation.id}`; }, 1400);
+}
+
+function renderFail(message) {
+  if (ring) ring.stop();
+  box.innerHTML = `
+    <div class="result-state">
+      <div class="result-icon fail">${ICONS.x}</div>
+      <h3>پرداخت ناموفق بود</h3>
+      <p>${message || 'میز تا پایان زمان نگه‌داری همچنان براته؛ می‌تونی دوباره تلاش کنی.'}</p>
+      <button class="primary-btn" id="retryPay" style="max-width:180px">تلاش دوباره</button>
+    </div>`;
+  document
+		.getElementById("retryPay")
+		.addEventListener("click", () =>
+			init().catch((error) => renderInvalid(error.message)),
+		);
 }
 
 function render() {
@@ -81,27 +90,24 @@ function render() {
         <div class="hold-ring-text"><strong>زمان نگه‌داری میز</strong><span>جای رزروت تا پایان این تایمر محفوظه.</span></div>
       </div>` : ''}
 
-    <div class="actions" style="flex-direction:column">
-      <button class="primary-btn" id="successPay">${ICONS.check}<span>پرداخت موفق</span></button>
-      <button class="secondary-btn" id="failPay">${ICONS.x}<span>پرداخت ناموفق</span></button>
-      <button class="danger-btn" id="reviewPay">نیاز به بررسی</button>
+    <div class="actions">
+      <button class="primary-btn" id="payBtn">${ICONS.check}<span>پرداخت</span></button>
     </div>
   `;
 
   if (holdActive) ring = mountHoldRing(document.getElementById('ringMount'), reservation.holdExpiresAt, { onExpire: renderExpired });
-  document.getElementById('successPay').onclick = () => pay('success');
-  document.getElementById('failPay').onclick = () => pay('fail');
-  document.getElementById('reviewPay').onclick = () => pay('review');
+  document.getElementById('payBtn').addEventListener('click', pay);
 }
 
-async function pay(result) {
-  document.querySelectorAll('#paymentBox button').forEach((b) => b.disabled = true);
+async function pay() {
+  const btn = document.getElementById('payBtn');
+  btn.disabled = true;
   try {
-    const data = await api(`/api/payments/${reservation.id}/mock`, { method: 'POST', body: { result } });
-    renderResult(result === 'success' ? 'success' : result === 'fail' ? 'fail' : 'review', data);
+    const { paymentUrl } = await api(`/api/payments/${reservation.id}/request`, { method: 'POST' });
+    location.href = paymentUrl;
   } catch (error) {
-    document.querySelectorAll('#paymentBox button').forEach((b) => b.disabled = false);
-    renderResult('fail', { message: error.message });
+    btn.disabled = false;
+    renderFail(error.message);
   }
 }
 
@@ -109,8 +115,13 @@ async function init() {
   if (!id) return renderInvalid('شناسه رزرو در آدرس صفحه پیدا نشد.');
   const { reservation: r } = await api(`/api/reservations/${id}`);
   reservation = r;
-  if (reservation.status === 'CONFIRMED') { location.href = `/invoice.html?id=${reservation.id}`; return; }
-  if (['CANCELLED', 'EXPIRED'].includes(reservation.status)) return renderExpired();
+
+  // برگشت از درگاه زرین‌پال - بک‌اند خودش تو callback همه‌چیو verify و ثبت کرده
+  if (resultParam === 'success' || reservation.status === 'CONFIRMED') return renderSuccess();
+  if (resultParam === 'fail') return renderFail();
+
+  if (reservation.status === 'CANCELLED') return renderExpired('این رزرو لغو شده', 'این رزرو لغو شده؛ از صفحه‌ی رزرو می‌تونی دوباره یه میز انتخاب کنی.');
+  if (reservation.status === 'EXPIRED') return renderExpired();
   render();
 }
 

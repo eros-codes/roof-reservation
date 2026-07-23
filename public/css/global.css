@@ -1,0 +1,124 @@
+/* global.css — پایه‌ی مشترک همه‌ی صفحات: روت وریبل‌ها، فونت، ریست. باید تو همه‌ی HTMLها اول از همه لینک بشه. */
+
+/* ==========================================================================
+   Roof Reservation — Design System v2
+   Rebuilt against the real About codebase: Lora + Baloo Bhaijaan 2,
+   near-zero radius, hairline borders, glass reserved for the header only.
+   ========================================================================== */
+
+@import url("https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&family=Baloo+Bhaijaan+2:wght@400..800&display=swap");
+
+:root {
+	--chapel-white: #efeae4;
+	--antique-veil: #c5bcad;
+	--deep-taupe: #6d5f54;
+	--rich-sabel: #422e2f;
+	--burnt-oak: #1f1516;
+	--bgc: linear-gradient(180deg, #fcf9f6 0%, #f4eee8 40%, #efeae4 100%);
+		--journey-1: var(--burnt-oak);
+	--journey-2: var(--rich-sabel);
+	--journey-3: var(--deep-taupe);
+	--journey-4: var(--antique-veil);
+	--journey-5: var(--chapel-white);
+
+	--ok: #6e8151;
+	--ok-ink: #46592f;
+	--warn: #96703c;
+	--warn-ink: #6b4e26;
+	--danger: #7a3f35;
+	--danger-ink: #63302a;
+
+	--line: rgba(66, 46, 47, 0.12);
+	--line-soft: rgba(66, 46, 47, 0.07);
+
+	--shadow: 0 6px 24px rgba(11, 15, 30, 0.06);
+	--shadow-hover: 0 14px 36px rgba(9, 15, 21, 0.14);
+	--shadow-lift: 0 20px 46px rgba(9, 15, 21, 0.18);
+
+	--r-xs: 5px;
+	--r-sm: 8px;
+
+	--ease: cubic-bezier(0.4, 0, 0.2, 1);
+	--dur: 300ms;
+
+	--font-fa: "Baloo Bhaijaan 2", Tahoma, sans-serif;
+	--font-serif: "Lora", serif;
+	--fs-page-title: clamp(24px, 3vw, 36px);
+}
+
+* {
+	box-sizing: border-box;
+	border: none;
+}
+html {
+	direction: rtl;
+	scroll-behavior: smooth;
+	font-size: 14px;
+}
+
+body {
+	margin: 0;
+	font-family: var(--font-fa);
+	font-size: 15px;
+	color: var(--burnt-oak);
+	/* background: linear-gradient(172deg, var(--chapel-white) 0%, var(--antique-veil) 100%); */
+	background: linear-gradient(
+		135deg,
+		#dccdbd 15%,
+		#d0beab 35%,
+		#c1ae99 70%,
+		#b29c86 90%
+	);
+
+	min-height: 100vh;
+}
+
+a {
+	color: inherit;
+	text-decoration: none;
+}
+button,
+input,
+select,
+textarea {
+	font: inherit;
+	color: inherit;
+}
+button {
+	cursor: pointer;
+	background: none;
+}
+h1,
+h2,
+h3,
+h4,
+p {
+	margin: 0;
+}
+table {
+	border-collapse: collapse;
+}
+::selection {
+	background: var(--rich-sabel);
+	color: var(--chapel-white);
+}
+:focus-visible {
+	outline: 1.5px solid var(--rich-sabel);
+	outline-offset: 3px;
+}
+
+
+/* ==========================================================================
+   Reduced motion (moved from Responsive)
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+}

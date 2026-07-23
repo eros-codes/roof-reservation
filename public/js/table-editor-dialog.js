@@ -26,7 +26,7 @@ let nextChairId = 1;
 /**
  * دیالوگ ساخت/ویرایش میز. کل چیدمان صندلی همین‌جا تعیین می‌شه؛ جای خودِ میز
  * رو نقشه‌ی اصلی با درگ تعیین می‌شه (اونجا هم فوری ذخیره می‌شه، نیازی به این
- * دیالوگ نداره). کلیک رو میز = این دیالوگ تو حالت ویرایش، شامل حذف.
+ * دیالوگ نداره). دابل‌کلیک رو میز = این دیالوگ تو حالت ویرایش، شامل حذف.
  */
 export function mountTableEditorDialog({ onSaved, onDeleted, getConnections, getAllTables }) {
   let mode = 'create';
@@ -114,6 +114,7 @@ export function mountTableEditorDialog({ onSaved, onDeleted, getConnections, get
         event.stopPropagation();
         selectedChairId = chair.id;
         dragChairId = chair.id;
+        canvasSvg.setPointerCapture(event.pointerId);
         renderCanvas();
         renderChairInspector();
       });
@@ -163,7 +164,14 @@ export function mountTableEditorDialog({ onSaved, onDeleted, getConnections, get
         const otherId = c.tableAId === editingTable.id ? c.tableBId : c.tableAId;
         const other = allTables.find((t) => t.id === otherId);
         return el('span', { class: 'connection-chip' }, `میز ${other?.displayNumber || '?'}`,
-          el('button', { type: 'button', onclick: async () => { await api(`/api/admin/table-connections/${c.id}`, { method: 'DELETE' }); renderConnections(); } }, '×'));
+          el('button', { type: 'button', onclick: async () => {
+            try {
+              await api(`/api/admin/table-connections/${c.id}`, { method: 'DELETE' });
+              renderConnections();
+            } catch (error) {
+              host.prepend(el('div', { class: 'notice danger' }, error.message));
+            }
+          } }, '×'));
       })),
       el('div', { class: 'connection-add' },
         el('select', { 'data-connection-pick': '' }, ...(others.length ? others.map((t) => el('option', { value: t.id }, `${t.code} · میز ${t.displayNumber}`)) : [el('option', { value: '' }, 'میز دیگری باقی نمانده')])),
@@ -172,8 +180,12 @@ export function mountTableEditorDialog({ onSaved, onDeleted, getConnections, get
           onclick: async () => {
             const otherId = host.querySelector('[data-connection-pick]').value;
             if (!otherId) return;
-            await api('/api/admin/table-connections', { method: 'POST', body: { tableAId: editingTable.id, tableBId: otherId } });
-            renderConnections();
+            try {
+              await api('/api/admin/table-connections', { method: 'POST', body: { tableAId: editingTable.id, tableBId: otherId } });
+              renderConnections();
+            } catch (error) {
+              host.prepend(el('div', { class: 'notice danger' }, error.message));
+            }
           }
         }, 'افزودن اتصال')
       )

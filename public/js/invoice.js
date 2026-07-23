@@ -1,5 +1,5 @@
 import { api, faDateTime, statusFa, toman } from './api.js';
-import { ICONS, initHeaderScroll } from './ui.js';
+import { ICONS, initHeaderScroll, faHours } from './ui.js';
 
 initHeaderScroll();
 
@@ -8,7 +8,20 @@ const box = document.getElementById('invoiceBox');
 
 const PAYMENT_STATUS_FA = { PENDING: 'در انتظار', PAID: 'پرداخت‌شده', FAILED: 'ناموفق', REVIEW: 'در حال بررسی', REFUND_PENDING: 'در انتظار بازگشت وجه', REFUNDED: 'بازگشت داده شده' };
 function tablesText(r) { return r.tables.map((rt) => rt.table.displayNumber).join(' و '); }
-function row(label, value) { return `<div class="detail-row"><span>${label}</span><strong>${value}</strong></div>`; }
+function escapeHtml(str) {
+	return String(str).replace(
+		/[&<>"']/g,
+		(c) =>
+			({
+				"&": "&amp;",
+				"<": "&lt;",
+				">": "&gt;",
+				'"': "&quot;",
+				"'": "&#39;",
+			})[c],
+	);
+}
+function row(label, value) { return `<div class="detail-row"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`; }
 
 async function init() {
   if (!id) throw new Error('شناسه فاکتور در آدرس پیدا نشد.');
@@ -30,12 +43,12 @@ async function init() {
     ${row('نام مشتری', reservation.customerName)}
     ${row('شماره موبایل', reservation.customerPhone)}
     ${row('تاریخ و ساعت', faDateTime(reservation.startAt))}
-    ${row('مدت رزرو', `${(reservation.durationMinutes / 60).toLocaleString('fa-IR')} ساعت`)}
+    ${row('مدت رزرو', `${faHours(reservation.durationMinutes)} ساعت`)}
     ${row('میز', tablesText(reservation))}
     ${row('تعداد نفرات', reservation.guestCount.toLocaleString('fa-IR'))}
     ${row('قیمت هر نفر', toman(reservation.pricePerGuest))}
     ${row('وضعیت پرداخت', payment.status ? (PAYMENT_STATUS_FA[payment.status] || payment.status) : '—')}
-    ${payment.refId ? row('کد رهگیری زرین‌پال', payment.refId) : ''}
+    ${payment.refId ? row('کد پیگیری پرداخت', payment.refId) : ''}
 
     <div class="amount-row"><span>مبلغ کل</span><strong>${toman(reservation.totalAmount)}</strong></div>
 

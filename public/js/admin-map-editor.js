@@ -3,7 +3,7 @@ import { RoofMap } from './map-renderer.js';
 import { mountTableEditorDialog } from './table-editor-dialog.js';
 
 /**
- * نقشه‌ی ادمین. دیگه فرم کناری برای ویرایش نداره — کلیک روی میز دیالوگ
+ * نقشه‌ی ادمین. دیگه فرم کناری برای ویرایش نداره — دابل‌کلیک روی میز دیالوگ
  * ویرایش (شامل حذف) رو باز می‌کنه، و درگ‌کردن میز همون لحظه‌ی رهاکردن
  * ذخیره می‌شه، بدون نیاز به تایید یا دکمه‌ی جدا.
  */
@@ -22,7 +22,7 @@ export async function mountAdminMapEditor({ container, tables = [], connections 
           <button type="button" data-map-action="reset" aria-label="نمایش کامل نقشه">⌂</button>
         </div>
       </div>
-      <p class="editor-help">${canEdit ? 'روی میز بزن تا ویرایش/حذفش کنی؛ برای جابه‌جایی بگیر و بکش — همون لحظه‌ی رهاکردن ذخیره می‌شه.' : 'نقشه فقط در حالت مشاهده است؛ نقش پذیرش اجازه تغییر میزها رو نداره.'}</p>
+      <p class="editor-help">${canEdit ? 'روی میز دابل‌کلیک کن تا ویرایش/حذفش کنی؛ برای جابه‌جایی بگیر و بکش — همون لحظه‌ی رهاکردن ذخیره می‌شه.' : 'نقشه فقط در حالت مشاهده است؛ نقش پذیرش اجازه تغییر میزها رو نداره.'}</p>
       <div data-editor-notice></div>
     </section>
   `;
@@ -63,13 +63,18 @@ export async function mountAdminMapEditor({ container, tables = [], connections 
     }
   });
 
-  await map.init();
+  try {
+    await map.init();
+  } catch (error) {
+    query('[data-editor-loading]').innerHTML = `<span></span><b>بارگذاری نقشه با خطا مواجه شد: ${error.message}</b>`;
+    throw error;
+  }
   query('[data-editor-loading]').hidden = true;
 
-  function update(nextTables, nextConnections) {
+  function update(nextTables, nextConnections, options = {}) {
     currentTables = [...nextTables];
     currentConnections = [...nextConnections];
-    map.setTables(currentTables, { selectedTableIds: [] });
+    map.setTables(currentTables, { selectedTableIds: options.keepSelectedId ? [options.keepSelectedId] : [] });
   }
 
   update(currentTables, currentConnections);
