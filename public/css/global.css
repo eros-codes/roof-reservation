@@ -8,13 +8,14 @@
 
 @import url("https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&family=Baloo+Bhaijaan+2:wght@400..800&display=swap");
 
+
 :root {
-	--chapel-white: #efeae4;
+	--chapel-white: #ffff;
 	--antique-veil: #c5bcad;
-	--deep-taupe: #6d5f54;
-	--rich-sabel: #422e2f;
-	--burnt-oak: #1f1516;
-	--bgc: linear-gradient(180deg, #fcf9f6 0%, #f4eee8 40%, #efeae4 100%);
+	--deep-taupe: #503d22;
+	--rich-sabel: #43392e;
+	--burnt-oak: #8C7864;
+	--bgc: linear-gradient(180deg, #564c34 0%, #E6DAC8 30%, #CBB9A4 80%);
 		--journey-1: var(--burnt-oak);
 	--journey-2: var(--rich-sabel);
 	--journey-3: var(--deep-taupe);
@@ -62,19 +63,15 @@ body {
 	font-size: 15px;
 	color: var(--burnt-oak);
 	/* background: linear-gradient(172deg, var(--chapel-white) 0%, var(--antique-veil) 100%); */
-	background: linear-gradient(
-		135deg,
-		#dccdbd 15%,
-		#d0beab 35%,
-		#c1ae99 70%,
-		#b29c86 90%
-	);
+	background: var(--bgc);
 
 	min-height: 100vh;
 }
 
 a {
-	color: inherit;
+	background-color: transparent !important;
+	color: white !important;
+	/* border: 2px solid var(--rich-sabel) !important; */
 	text-decoration: none;
 }
 button,
@@ -94,6 +91,8 @@ h3,
 h4,
 p {
 	margin: 0;
+	font-family: var(--font-fa) !important;
+
 }
 table {
 	border-collapse: collapse;

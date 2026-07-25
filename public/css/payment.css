@@ -57,4 +57,13 @@
 	border: 1px dashed var(--line);
 	border-radius: var(--r-xs);
 }
+section.card-pad{
+	width: 80%;
+	align-self: center;
+}
+button.primary-btn{
+	width: 100px;
+	height: 100px;
+	object-fit: cover;
+}
 
