@@ -1,25 +1,11 @@
 import { api, faDateTime, statusFa, toman } from './api.js';
-import { ICONS, initHeaderScroll } from './ui.js';
+import { ICONS, initHeaderScroll, detailRow as row } from './ui.js';
 import { mountOtpWidget } from './otp-widget.js';
 
 initHeaderScroll();
 
 const result = document.getElementById('result');
 result.innerHTML = `${ICONS.search}<strong>هنوز رزروی نمایش داده نشده</strong><p>فرم کناری رو پر کن تا جزئیات رزرو رو ببینی.</p>`;
-function escapeHtml(str) {
-	return String(str).replace(
-		/[&<>"']/g,
-		(c) =>
-			({
-				"&": "&amp;",
-				"<": "&lt;",
-				">": "&gt;",
-				'"': "&quot;",
-				"'": "&#39;",
-			})[c],
-	);
-}
-function row(label, value) { return `<div class="detail-row"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`; }
 
 mountOtpWidget(document.getElementById('otpBox'), {
   purpose: 'GUEST_ACCESS',

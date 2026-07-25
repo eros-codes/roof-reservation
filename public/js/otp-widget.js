@@ -1,18 +1,6 @@
 import { api } from './api.js';
+import { escapeHtml } from './ui.js';
 
-function escapeHtml(str) {
-	return String(str).replace(
-		/[&<>"']/g,
-		(c) =>
-			({
-				"&": "&amp;",
-				"<": "&lt;",
-				">": "&gt;",
-				'"': "&quot;",
-				"'": "&#39;",
-			})[c],
-	);
-}
 export function mountOtpWidget(container, { purpose, extraFields = [], submitLabel = 'تایید', onVerified }) {
   container.innerHTML = `
     <div class="form-grid otp-widget">

@@ -41,7 +41,7 @@ export async function mountAdminMapEditor({ container, tables = [], connections 
   const dialog = mountTableEditorDialog({
     getAllTables: () => currentTables,
     getConnections: () => currentConnections,
-    onSaved: () => onReload?.({ keepSelectedId: null }),
+    onSaved: (tableId) => onReload?.({ keepSelectedId: tableId ?? null }),
     onDeleted: () => onReload?.({ keepSelectedId: null })
   });
 

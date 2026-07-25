@@ -1,5 +1,5 @@
 import { api, faDateTime, statusFa, toman } from './api.js';
-import { ICONS, initHeaderScroll, faHours } from './ui.js';
+import { ICONS, initHeaderScroll, faHours, detailRow as row, tablesText } from './ui.js';
 
 initHeaderScroll();
 
@@ -7,21 +7,6 @@ const id = new URLSearchParams(location.search).get('id');
 const box = document.getElementById('invoiceBox');
 
 const PAYMENT_STATUS_FA = { PENDING: 'در انتظار', PAID: 'پرداخت‌شده', FAILED: 'ناموفق', REVIEW: 'در حال بررسی', REFUND_PENDING: 'در انتظار بازگشت وجه', REFUNDED: 'بازگشت داده شده' };
-function tablesText(r) { return r.tables.map((rt) => rt.table.displayNumber).join(' و '); }
-function escapeHtml(str) {
-	return String(str).replace(
-		/[&<>"']/g,
-		(c) =>
-			({
-				"&": "&amp;",
-				"<": "&lt;",
-				">": "&gt;",
-				'"': "&quot;",
-				"'": "&#39;",
-			})[c],
-	);
-}
-function row(label, value) { return `<div class="detail-row"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`; }
 
 async function init() {
   if (!id) throw new Error('شناسه فاکتور در آدرس پیدا نشد.');

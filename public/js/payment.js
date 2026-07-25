@@ -1,29 +1,15 @@
 import { api, faDateTime, toman } from './api.js';
-import { ICONS, mountHoldRing, initHeaderScroll } from './ui.js';
+import { ICONS, mountHoldRing, initHeaderScroll, escapeHtml, tablesText } from './ui.js';
 
 initHeaderScroll();
 
 const id = new URLSearchParams(location.search).get('id');
-const resultParam = new URLSearchParams(location.search).get('result');
+let resultParam = new URLSearchParams(location.search).get('result');
 const box = document.getElementById('paymentBox');
 let reservation = null;
 let ring = null;
 
-function tablesText(r) { return r.tables.map((rt) => rt.table.displayNumber).join(' و '); }
 function endTimeText(r) { return new Date(r.endAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }); }
-function escapeHtml(str) {
-	return String(str).replace(
-		/[&<>"']/g,
-		(c) =>
-			({
-				"&": "&amp;",
-				"<": "&lt;",
-				">": "&gt;",
-				'"': "&quot;",
-				"'": "&#39;",
-			})[c],
-	);
-}
 function row(icon, label, value) {
   return `<div class="detail-row"><span class="ico">${icon}</span><span>${escapeHtml(label)}: <strong>${escapeHtml(value)}</strong></span></div>`;
 }
@@ -41,6 +27,18 @@ function renderExpired(title = 'زمان نگه‌داری تمام شد', messa
       <p>${message}</p>
       <a class="primary-btn" href="/" style="max-width:200px">انتخاب دوباره</a>
     </div>`;
+}
+
+function renderReview() {
+  if (ring) ring.stop();
+  box.innerHTML = `
+    <div class="result-state">
+      <div class="result-icon warn">${ICONS.clock}</div>
+      <h3>پرداخت در حال بررسیه</h3>
+      <p>پرداختت ثبت شده و داره بررسی می‌شه؛ نتیجه‌ش به‌زودی مشخص می‌شه. لازم نیست دوباره پرداخت کنی.</p>
+      <button class="secondary-btn" id="refreshStatus" style="max-width:200px">بررسی وضعیت</button>
+    </div>`;
+  document.getElementById('refreshStatus').addEventListener('click', () => init().catch((error) => renderInvalid(error.message)));
 }
 
 function renderSuccess() {
@@ -104,6 +102,7 @@ async function pay() {
   btn.disabled = true;
   try {
     const { paymentUrl } = await api(`/api/payments/${reservation.id}/request`, { method: 'POST' });
+    if (!paymentUrl) throw new Error('درگاه پرداخت در دسترس نیست.');
     location.href = paymentUrl;
   } catch (error) {
     btn.disabled = false;
@@ -116,9 +115,18 @@ async function init() {
   const { reservation: r } = await api(`/api/reservations/${id}`);
   reservation = r;
 
+  // resultParam فقط یه‌بار مصرف می‌شه؛ وگرنه بعد از یه پرداخت ناموفق، دکمه‌ی
+  // «تلاش دوباره» چون همون ?result=fail هنوز تو آدرس/حافظه‌ست، هر بار init()
+  // رو که دوباره صدا می‌زنه بازم مستقیم می‌ره رو همون صفحه‌ی fail، انگار
+  // اصلاً تلاش دوباره‌ای اتفاق نیفتاده.
+  const currentResult = resultParam;
+  resultParam = null;
+  if (currentResult) history.replaceState(null, '', `${location.pathname}?id=${id}`);
+
   // برگشت از درگاه زرین‌پال - بک‌اند خودش تو callback همه‌چیو verify و ثبت کرده
-  if (resultParam === 'success' || reservation.status === 'CONFIRMED') return renderSuccess();
-  if (resultParam === 'fail') return renderFail();
+  if (currentResult === 'success' || reservation.status === 'CONFIRMED') return renderSuccess();
+  if (currentResult === 'fail') return renderFail();
+  if (reservation.status === 'PAYMENT_REVIEW') return renderReview();
 
   if (reservation.status === 'CANCELLED') return renderExpired('این رزرو لغو شده', 'این رزرو لغو شده؛ از صفحه‌ی رزرو می‌تونی دوباره یه میز انتخاب کنی.');
   if (reservation.status === 'EXPIRED') return renderExpired();

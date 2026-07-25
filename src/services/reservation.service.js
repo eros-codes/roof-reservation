@@ -3,19 +3,19 @@ import { addMinutes, combineDateAndTime, generateInvoiceNumber, generateTracking
 import { getSettings, numberSetting } from './settings.service.js';
 import { assertTablesAvailable } from './availability.service.js';
 
-async function uniqueTrackingCode() {
+async function uniqueTrackingCode(client = prisma) {
   for (let i = 0; i < 10; i++) {
     const code = generateTrackingCode();
-    const existing = await prisma.reservation.findUnique({ where: { trackingCode: code } });
+    const existing = await client.reservation.findUnique({ where: { trackingCode: code } });
     if (!existing) return code;
   }
   throw new Error('ساخت کد پیگیری ناموفق بود.');
 }
 
-async function uniqueInvoiceNumber() {
+async function uniqueInvoiceNumber(client = prisma) {
   for (let i = 0; i < 10; i++) {
     const number = generateInvoiceNumber();
-    const existing = await prisma.invoice.findUnique({ where: { number } });
+    const existing = await client.invoice.findUnique({ where: { number } });
     if (!existing) return number;
   }
   throw new Error('ساخت شماره فاکتور ناموفق بود.');
@@ -23,48 +23,52 @@ async function uniqueInvoiceNumber() {
 
 export async function createReservationHold({ tableIds, date, startTime, durationMinutes, guestCount, customerName, customerPhone, userId = null, source = 'ONLINE', originalReservationId = null }) {
   if (!Array.isArray(tableIds) || tableIds.length < 1 || tableIds.length > 2) throw new Error('انتخاب میز نامعتبر است.');
-  await assertTablesAvailable({ tableIds, date, startTime, durationMinutes, guestCount });
 
   const settings = await getSettings();
   const pricePerGuest = numberSetting(settings, 'pricePerGuest', 100000);
   const holdMinutes = numberSetting(settings, 'holdMinutes', 10);
   const totalAmount = pricePerGuest * guestCount;
-  const startAt = combineDateAndTime(date, startTime);
-  const endAt = addMinutes(startAt, durationMinutes);
-  const trackingCode = await uniqueTrackingCode();
-  const invoiceNumber = await uniqueInvoiceNumber();
-  const holdExpiresAt = addMinutes(new Date(), holdMinutes);
 
-  return prisma.reservation.create({
-    data: {
-      trackingCode,
-      userId,
-      customerName,
-      customerPhone,
-      guestCount,
-      startAt,
-      endAt,
-      durationMinutes,
-      status: source === 'ADMIN_MANUAL' ? 'CONFIRMED' : 'HOLD',
-      source,
-      holdExpiresAt: source === 'ADMIN_MANUAL' ? null : holdExpiresAt,
-      pricePerGuest,
-      totalAmount,
-      paidAmount: source === 'ADMIN_MANUAL' ? totalAmount : 0,
-      originalReservationId,
-      tables: { create: tableIds.map((tableId) => ({ tableId })) },
-      invoice: { create: { number: invoiceNumber, totalAmount } },
-      payments: {
-        create: {
-          amount: totalAmount,
-          status: source === 'ADMIN_MANUAL' ? 'PAID' : 'PENDING',
-          method: source === 'ADMIN_MANUAL' ? 'MANUAL' : 'ZARINPAL',
-          provider: source === 'ADMIN_MANUAL' ? 'manual' : 'zarinpal',
-          isMock: false
+  return prisma.$transaction(async (tx) => {
+    await assertTablesAvailable({ tableIds, date, startTime, durationMinutes, guestCount }, tx);
+
+    const startAt = combineDateAndTime(date, startTime);
+    const endAt = addMinutes(startAt, durationMinutes);
+    const trackingCode = await uniqueTrackingCode(tx);
+    const invoiceNumber = await uniqueInvoiceNumber(tx);
+    const holdExpiresAt = addMinutes(new Date(), holdMinutes);
+
+    return tx.reservation.create({
+      data: {
+        trackingCode,
+        userId,
+        customerName,
+        customerPhone,
+        guestCount,
+        startAt,
+        endAt,
+        durationMinutes,
+        status: source === 'ADMIN_MANUAL' ? 'CONFIRMED' : 'HOLD',
+        source,
+        holdExpiresAt: source === 'ADMIN_MANUAL' ? null : holdExpiresAt,
+        pricePerGuest,
+        totalAmount,
+        paidAmount: source === 'ADMIN_MANUAL' ? totalAmount : 0,
+        originalReservationId,
+        tables: { create: tableIds.map((tableId) => ({ tableId })) },
+        invoice: { create: { number: invoiceNumber, totalAmount } },
+        payments: {
+          create: {
+            amount: totalAmount,
+            status: source === 'ADMIN_MANUAL' ? 'PAID' : 'PENDING',
+            method: source === 'ADMIN_MANUAL' ? 'MANUAL' : 'ZARINPAL',
+            provider: source === 'ADMIN_MANUAL' ? 'manual' : 'zarinpal',
+            isMock: false
+          }
         }
-      }
-    },
-    include: { tables: { include: { table: true } }, payments: true, invoice: true, user: true }
+      },
+      include: { tables: { include: { table: true } }, payments: true, invoice: true, user: true }
+    });
   });
 }
 

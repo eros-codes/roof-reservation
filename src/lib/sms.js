@@ -1,8 +1,15 @@
 import { prisma } from './prisma.js';
+import { config } from "../config.js";
 
 export async function sendMockSms({ phone, type, message }) {
-  const log = await prisma.smsLog.create({ data: { phone, type, message, status: 'MOCK_SENT' } });
-  console.log(`\n[MOCK SMS][${type}] ${phone}: ${message}\n`);
+  const status = config.smsMode === 'console' ? 'MOCK_SENT' : 'PENDING_PROVIDER';
+  const log = await prisma.smsLog.create({ data: { phone, type, message, status } });
+  if (config.smsMode === 'console') {
+    console.log(`\n[MOCK SMS][${type}] ${phone}: ${message}\n`);
+  } else {
+    // TODO: وقتی پروایدر واقعی (مثلاً ir.sms) انتخاب شد، اینجا فراخوانی واقعی اضافه می‌شه.
+    console.warn(`[SMS] هنوز هیچ پروایدر واقعی برای SMS_MODE="${config.smsMode}" وصل نشده.`);
+  }
   return log;
 }
 

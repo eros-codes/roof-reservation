@@ -1,5 +1,5 @@
 import { api, faDateTime, statusFa, toman } from './api.js';
-import { ICONS, initHeaderScroll } from './ui.js';
+import { ICONS, initHeaderScroll, escapeHtml, renderDurationChips } from './ui.js';
 import { mountAdminMapEditor } from './admin-map-editor.js';
 
 initHeaderScroll();
@@ -88,12 +88,16 @@ function skeletonKpis(count) {
 /* ---------- dashboard ---------- */
 async function loadDashboard() {
   el('dashboardBox').innerHTML = skeletonKpis(4);
-  const dashboard = await api('/api/admin/dashboard');
-  el('dashboardBox').innerHTML =
-    kpi('calendar', 'رزرو امروز', dashboard.todayReservations.toLocaleString('fa-IR'))
-    + kpi('clock', 'پرداخت‌های معلق', dashboard.pendingPayments.toLocaleString('fa-IR'))
-    + kpi('ban', 'عدم حضور (No-show)', dashboard.noShows.toLocaleString('fa-IR'))
-    + kpi('receipt', 'درآمد کل', toman(dashboard.totalRevenue));
+  try {
+    const dashboard = await api('/api/admin/dashboard');
+    el('dashboardBox').innerHTML =
+      kpi('calendar', 'رزرو امروز', dashboard.todayReservations.toLocaleString('fa-IR'))
+      + kpi('clock', 'پرداخت‌های معلق', dashboard.pendingPayments.toLocaleString('fa-IR'))
+      + kpi('ban', 'عدم حضور (No-show)', dashboard.noShows.toLocaleString('fa-IR'))
+      + kpi('receipt', 'درآمد کل', toman(dashboard.totalRevenue));
+  } catch (error) {
+    el('dashboardBox').innerHTML = `<div class="notice danger">${error.message}</div>`;
+  }
 }
 
 /* ---------- reservations ---------- */
@@ -105,19 +109,6 @@ function statusOptions() {
     ${state.admin.role !== 'RECEPTION' ? '<option value="CONFIRMED">تایید</option>' : ''}`;
 }
 
-function escapeHtml(str) {
-	return String(str).replace(
-		/[&<>"']/g,
-		(c) =>
-			({
-				"&": "&amp;",
-				"<": "&lt;",
-				">": "&gt;",
-				'"': "&quot;",
-				"'": "&#39;",
-			})[c],
-	);
-}
 async function loadReservations() {
   el('reservationBox').innerHTML = '<div class="skeleton" style="height:180px"></div>';
   const { reservations } = await api('/api/admin/reservations');
@@ -153,22 +144,6 @@ async function loadReservations() {
 }
 
 /* ---------- manual booking ---------- */
-function renderDurationChips() {
-  const row = el('mDurationRow');
-  row.innerHTML = '';
-  for (let minutes = 60; minutes <= 240; minutes += 30) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = `chip${minutes === state.manualDuration ? ' active' : ''}`;
-    button.textContent = `${(minutes / 60).toLocaleString('fa-IR')} ساعت`;
-    button.addEventListener('click', () => {
-      state.manualDuration = minutes;
-      renderDurationChips();
-    });
-    row.appendChild(button);
-  }
-}
-
 document.querySelectorAll('[data-mstep]').forEach((button) => {
   button.addEventListener('click', () => {
     const input = el('mGuests');
@@ -287,7 +262,13 @@ async function loadTables(options = {}) {
 
 /* ---------- working hours ---------- */
 async function loadHours() {
-  const { workingHours } = await api('/api/admin/working-hours');
+  let workingHours;
+  try {
+    ({ workingHours } = await api('/api/admin/working-hours'));
+  } catch (error) {
+    el('hoursBox').innerHTML = `<div class="notice danger">${error.message}</div>`;
+    return;
+  }
   el('hoursBox').innerHTML = `<div id="hoursNotice"></div><div class="table-scroll"><table class="table-list"><thead><tr><th>روز</th><th>از ساعت</th><th>تا ساعت</th><th>تعطیل</th><th></th></tr></thead><tbody>${workingHours.map((hour) => `
     <tr>
       <td>${DAY_FA[hour.dayOfWeek]}</td>
@@ -321,7 +302,13 @@ async function loadHours() {
 
 /* ---------- closures ---------- */
 async function loadClosures() {
-  const { closures } = await api('/api/admin/closures');
+  let closures;
+  try {
+    ({ closures } = await api('/api/admin/closures'));
+  } catch (error) {
+    el('closuresBox').innerHTML = `<div class="notice danger">${error.message}</div>`;
+    return;
+  }
   el('closuresBox').innerHTML = `
     <div id="closuresNotice"></div>
     <div class="form-grid" style="margin-bottom:20px">
@@ -376,7 +363,13 @@ async function loadClosures() {
 
 /* ---------- settings ---------- */
 async function loadSettings() {
-  const { settings } = await api('/api/admin/settings');
+  let settings;
+  try {
+    ({ settings } = await api('/api/admin/settings'));
+  } catch (error) {
+    el('settingsBox').innerHTML = `<div class="notice danger">${error.message}</div>`;
+    return;
+  }
   el('settingsBox').innerHTML = `<div class="form-grid">
     <div class="row">${SETTINGS_FIELDS.map(([key, label]) => `<div class="field"><label>${label}</label><input id="set-${key}" value="${settings[key] ?? ''}"></div>`).join('')}</div>
     <button id="saveSettings" class="primary-btn">ذخیره تنظیمات</button>
@@ -400,12 +393,16 @@ async function loadSettings() {
 /* ---------- reports ---------- */
 async function loadReports() {
   el('reportsBox').innerHTML = skeletonKpis(4);
-  const report = await api('/api/admin/reports/revenue');
-  el('reportsBox').innerHTML =
-    kpi('check', 'پرداخت موفق', report.paidCount.toLocaleString('fa-IR'))
-    + kpi('receipt', 'درآمد', toman(report.totalPaid))
-    + kpi('x', 'لغوشده', report.cancelled.toLocaleString('fa-IR'))
-    + kpi('ban', 'عدم حضور', report.noShow.toLocaleString('fa-IR'));
+  try {
+    const report = await api('/api/admin/reports/revenue');
+    el('reportsBox').innerHTML =
+      kpi('check', 'پرداخت موفق', report.paidCount.toLocaleString('fa-IR'))
+      + kpi('receipt', 'درآمد', toman(report.totalPaid))
+      + kpi('x', 'لغوشده', report.cancelled.toLocaleString('fa-IR'))
+      + kpi('ban', 'عدم حضور', report.noShow.toLocaleString('fa-IR'));
+  } catch (error) {
+    el('reportsBox').innerHTML = `<div class="notice danger">${error.message}</div>`;
+  }
 }
 
 /* ---------- init ---------- */
@@ -421,7 +418,7 @@ async function init() {
   }
 
   el('mDate').value = new Date().toISOString().slice(0, 10);
-  renderDurationChips();
+  renderDurationChips('mDurationRow', () => state.manualDuration, (value) => { state.manualDuration = value; });
   await loadTables();
   await Promise.all([loadDashboard(), loadReservations(), loadHours(), loadClosures(), loadSettings(), loadReports()]);
 }

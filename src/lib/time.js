@@ -10,6 +10,7 @@ export function minutesToTime(totalMinutes) {
 
 export function timeToMinutes(time) {
   const [h, m] = String(time).split(':').map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) throw new Error(`فرمت ساعت نامعتبر است: ${time}`);
   return h * 60 + m;
 }
 
@@ -35,7 +36,8 @@ export function overlapWithBuffer(startA, endA, startB, endB, bufferMinutes = 0)
 
 export function makeTimeSlots(openTime, closeTime, intervalMinutes = 15) {
   const slots = [];
-  for (let m = timeToMinutes(openTime); m <= timeToMinutes(closeTime); m += intervalMinutes) {
+  const end = timeToMinutes(closeTime);
+  for (let m = timeToMinutes(openTime); m <= end; m += intervalMinutes) {
     slots.push(minutesToTime(m));
   }
   return slots;

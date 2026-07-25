@@ -1,35 +1,63 @@
-import { config } from '../config.js';
+import { config } from "../config.js";
 
-const HOST = config.paymentMode === 'live' ? 'payment.zarinpal.com' : 'sandbox.zarinpal.com';
+const HOST =
+	config.paymentMode === "live"
+		? "payment.zarinpal.com"
+		: "sandbox.zarinpal.com";
 const REQUEST_URL = `https://${HOST}/pg/v4/payment/request.json`;
 const VERIFY_URL = `https://${HOST}/pg/v4/payment/verify.json`;
 const STARTPAY_URL = `https://${HOST}/pg/StartPay`;
 
-/**
- * پرداخت رو نزد زرین‌پال شروع می‌کنه و آدرس درگاه رو برمی‌گردونه.
- * amount دقیقاً همون تومانیه که تو دیتابیس داریم؛ با currency:'IRT' صریح
- * می‌گیم واحدش تومانه، نیازی به ضربدر ۱۰ (تبدیل به ریال) نیست.
- */
-export async function requestZarinpalPayment({ amount, description, callbackUrl, mobile }) {
-  if (!config.zarinpalMerchantId) throw new Error('ZARINPAL_MERCHANT_ID تنظیم نشده است.');
-  const response = await fetch(REQUEST_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({
-      merchant_id: config.zarinpalMerchantId,
-      amount,
-      currency: 'IRT',
-      description,
-      callback_url: callbackUrl,
-      metadata: mobile ? { mobile } : undefined
-    })
-  });
-  const data = await response.json();
-  if (data?.data?.code !== 100 || !data.data.authority) {
-    const message = data?.errors?.message || 'اتصال به درگاه پرداخت زرین‌پال ناموفق بود.';
-    throw new Error(message);
-  }
-  return { authority: data.data.authority, paymentUrl: `${STARTPAY_URL}/${data.data.authority}`, raw: data };
+async function fetchZarinpal(url, body) {
+	const controller = new AbortController();
+	const timeout = setTimeout(() => controller.abort(), 10000);
+	try {
+		const response = await fetch(url, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				Accept: "application/json",
+			},
+			body: JSON.stringify(body),
+			signal: controller.signal,
+		});
+		return await response.json();
+	} catch (error) {
+		if (error.name === "AbortError")
+			throw new Error("درگاه پرداخت زرین‌پال به‌موقع پاسخ نداد.");
+		throw new Error("اتصال به درگاه پرداخت زرین‌پال برقرار نشد.");
+	} finally {
+		clearTimeout(timeout);
+	}
+}
+
+export async function requestZarinpalPayment({
+	amount,
+	description,
+	callbackUrl,
+	mobile,
+}) {
+	if (!config.zarinpalMerchantId)
+		throw new Error("ZARINPAL_MERCHANT_ID تنظیم نشده است.");
+	const data = await fetchZarinpal(REQUEST_URL, {
+		merchant_id: config.zarinpalMerchantId,
+		amount,
+		currency: "IRT",
+		description,
+		callback_url: callbackUrl,
+		metadata: mobile ? { mobile } : undefined,
+	});
+	if (data?.data?.code !== 100 || !data.data.authority) {
+		throw new Error(
+			data?.errors?.message ||
+				"اتصال به درگاه پرداخت زرین‌پال ناموفق بود.",
+		);
+	}
+	return {
+		authority: data.data.authority,
+		paymentUrl: `${STARTPAY_URL}/${data.data.authority}`,
+		raw: data,
+	};
 }
 
 /**
@@ -39,18 +67,18 @@ export async function requestZarinpalPayment({ amount, description, callbackUrl,
  * دوباره confirmed نمی‌کنیم رزرو رو).
  */
 export async function verifyZarinpalPayment({ amount, authority }) {
-  const response = await fetch(VERIFY_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ merchant_id: config.zarinpalMerchantId, amount, currency: 'IRT', authority })
-  });
-  const data = await response.json();
-  const code = data?.data?.code;
-  return {
-    ok: code === 100 || code === 101,
-    alreadyVerified: code === 101,
-    refId: data?.data?.ref_id ? String(data.data.ref_id) : null,
-    code,
-    raw: data
-  };
+	const data = await fetchZarinpal(VERIFY_URL, {
+		merchant_id: config.zarinpalMerchantId,
+		amount,
+		currency: "IRT",
+		authority,
+	});
+	const code = data?.data?.code;
+	return {
+		ok: code === 100 || code === 101,
+		alreadyVerified: code === 101,
+		refId: data?.data?.ref_id ? String(data.data.ref_id) : null,
+		code,
+		raw: data,
+	};
 }

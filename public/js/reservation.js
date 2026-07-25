@@ -1,5 +1,5 @@
 import { api, toman } from './api.js';
-import { ICONS, createSheetController, initHeaderScroll } from './ui.js';
+import { ICONS, createSheetController, initHeaderScroll, escapeHtml, renderDurationChips } from './ui.js';
 import { RoofMap } from './map-renderer.js';
 
 const ZONE_FA = { WINDOW: 'سالن پنجره', CENTER: 'سالن وسط', ROOF: 'روف گاردن' };
@@ -43,24 +43,6 @@ document.querySelectorAll('.stepper [data-step]').forEach((button) => {
   });
 });
 
-/* ---------- duration chips ---------- */
-function renderDurationChips() {
-  const row = el('durationRow');
-  row.innerHTML = '';
-  for (let minutes = 60; minutes <= 240; minutes += 30) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = `chip${minutes === state.duration ? ' active' : ''}`;
-    button.textContent = `${(minutes / 60).toLocaleString('fa-IR')} ساعت`;
-    button.addEventListener('click', () => {
-      state.duration = minutes;
-      row.querySelectorAll('.chip').forEach((chip) => chip.classList.remove('active'));
-      button.classList.add('active');
-    });
-    row.appendChild(button);
-  }
-}
-
 /* ---------- date strip ---------- */
 function renderDates() {
   const row = el('dateRow');
@@ -98,19 +80,6 @@ function setMode(mode) {
 document.querySelectorAll('.mode-tabs button').forEach((button) => {
   button.addEventListener('click', () => setMode(button.dataset.mode));
 });
-function escapeHtml(str) {
-	return String(str).replace(
-		/[&<>"']/g,
-		(c) =>
-			({
-				"&": "&amp;",
-				"<": "&lt;",
-				">": "&gt;",
-				'"': "&quot;",
-				"'": "&#39;",
-			})[c],
-	);
-}
 /* ---------- selection + detail panel ---------- */
 function detailCard(title, lines, showAction = false) {
   return `
@@ -289,7 +258,7 @@ async function init() {
   el('mapLoading').hidden = true;
 
   state.config = await api('/api/config');
-  renderDurationChips();
+  renderDurationChips('durationRow', () => state.duration, (value) => { state.duration = value; });
   renderDates();
 
   try {

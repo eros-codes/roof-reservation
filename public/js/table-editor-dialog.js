@@ -280,12 +280,12 @@ export function mountTableEditorDialog({ onSaved, onDeleted, getConnections, get
       box.querySelector('[type="submit"]').disabled = true;
       if (mode === 'create') {
         const dims = shapeDims(body.shape);
-        await api('/api/admin/tables', { method: 'POST', body: { ...body, x: 300, y: 300, ...dims } });
-        await onSaved?.();
+        const { table: created } = await api('/api/admin/tables', { method: 'POST', body: { ...body, x: 300, y: 300, ...dims } });
+        await onSaved?.(created?.id);
         close();
       } else {
         await api(`/api/admin/tables/${editingTable.id}`, { method: 'PATCH', body });
-        await onSaved?.();
+        await onSaved?.(editingTable.id);
         close();
       }
     } catch (error) {

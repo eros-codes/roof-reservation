@@ -27,6 +27,42 @@ export function roofMonogram() {
   return '<svg viewBox="0 0 24 24" fill="none" stroke="#EFEAE4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5L12 5l8 7.5"/><path d="M6.5 10.7V19h11v-8.3"/></svg>';
 }
 
+/** Escapes text before it goes into innerHTML. Every page that injects server/user data into HTML should use this. */
+export function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/** A label/value detail row, used by track.html/invoice.html reservation summaries. */
+export function detailRow(label, value) {
+  return `<div class="detail-row"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`;
+}
+
+/** Comma-joined table numbers for a reservation, used by invoice.html/payment.html. */
+export function tablesText(reservation) {
+  return reservation.tables.map((rt) => rt.table.displayNumber).join(' و ');
+}
+
+/**
+ * Renders 60–240min duration chips into containerId, calling setValue(minutes) on click.
+ * getValue() should return the currently-selected minutes so the right chip starts active.
+ */
+export function renderDurationChips(containerId, getValue, setValue) {
+  const row = document.getElementById(containerId);
+  row.innerHTML = '';
+  for (let minutes = 60; minutes <= 240; minutes += 30) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `chip${minutes === getValue() ? ' active' : ''}`;
+    button.textContent = `${(minutes / 60).toLocaleString('fa-IR')} ساعت`;
+    button.addEventListener('click', () => {
+      setValue(minutes);
+      row.querySelectorAll('.chip').forEach((chip) => chip.classList.remove('active'));
+      button.classList.add('active');
+    });
+    row.appendChild(button);
+  }
+}
+
 /**
  * Mounts a countdown ring bound to an absolute expiry timestamp.
  * onExpire fires once when time runs out. Returns a stop() handle.
