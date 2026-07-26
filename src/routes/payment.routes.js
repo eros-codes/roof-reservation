@@ -4,6 +4,14 @@ import { requestZarinpalPayment, verifyZarinpalPayment } from '../lib/payment.js
 import { confirmationMessage, notConfirmedMessage, sendMockSms } from '../lib/sms.js';
 import { getReservationFull } from '../services/reservation.service.js';
 import { config } from '../config.js';
+import rateLimit from "express-rate-limit";
+
+const paymentRequestLimiter = rateLimit({
+	windowMs: 10 * 60 * 1000,
+	max: 8,
+	keyGenerator: (req) => `${req.ip}:${req.params.reservationId}`,
+	message: { message: "تعداد درخواست پرداخت بیش از حد مجاز است." },
+});
 
 export const paymentRouter = express.Router();
 
@@ -14,28 +22,35 @@ function isPayable(reservation) {
 }
 
 async function confirmPaid(reservation, refId, rawResponse) {
-  await prisma.payment.updateMany({
-    where: { reservationId: reservation.id, status: { in: ['PENDING', 'FAILED', 'REVIEW'] } },
-    data: { status: 'PAID', refId, verifiedAt: new Date(), rawResponse }
-  });
-  const updated = await prisma.reservation.update({
-    where: { id: reservation.id },
-    data: { status: 'CONFIRMED', paidAmount: reservation.totalAmount, holdExpiresAt: null }
-  });
+  const [, updated] = await prisma.$transaction([
+    prisma.payment.updateMany({
+      where: { reservationId: reservation.id, status: { in: ['PENDING', 'FAILED', 'REVIEW'] } },
+      data: { status: 'PAID', refId, verifiedAt: new Date(), rawResponse }
+    }),
+    prisma.reservation.update({
+      where: { id: reservation.id },
+      data: { status: 'CONFIRMED', paidAmount: reservation.totalAmount, holdExpiresAt: null }
+    })
+  ]);
   if (reservation.originalReservationId) {
     await prisma.reservation.update({ where: { id: reservation.originalReservationId }, data: { status: 'CANCELLED', notes: 'با رزرو جدید جایگزین شد.' } });
   }
-  await sendMockSms({ phone: reservation.customerPhone, type: 'CONFIRMATION', message: confirmationMessage(reservation) });
+  try {
+    await sendMockSms({ phone: reservation.customerPhone, type: 'CONFIRMATION', message: confirmationMessage(reservation) });
+  } catch (smsError) {
+    console.error('SMS تایید ارسال نشد (رزرو همچنان تایید شده باقی می‌ماند):', smsError);
+  }
   return updated;
 }
 
 // مرحله ۱: شروع پرداخت - کاربر رو به درگاه زرین‌پال می‌فرسته
-paymentRouter.post('/:reservationId/request', async (req, res, next) => {
+paymentRouter.post('/:reservationId/request', paymentRequestLimiter, async (req, res, next) => {
   try {
     const reservation = await getReservationFull(req.params.reservationId);
     if (!reservation) return res.status(404).json({ message: 'رزرو پیدا نشد.' });
     if (!isPayable(reservation)) {
-      if (reservation.holdExpiresAt && reservation.holdExpiresAt < new Date() && reservation.status !== 'CONFIRMED') {
+      const wasActivelyHolding = ['HOLD', 'PAYMENT_PENDING'].includes(reservation.status);
+      if (wasActivelyHolding && reservation.holdExpiresAt && reservation.holdExpiresAt < new Date()) {
         await prisma.reservation.update({ where: { id: reservation.id }, data: { status: 'EXPIRED' } });
       }
       return res.status(400).json({ message: 'این رزرو دیگر قابل پرداخت نیست.' });

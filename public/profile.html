@@ -20,9 +20,13 @@
 
     <!-- حالت وارد نشده: فقط گیت ورود -->
     <section id="loginGate" class="page-head" style="max-width:420px;margin-inline:auto;text-align:center">
-      <span class="eyebrow" style="align-self:center">ورود با کد یک‌بارمصرف</span>
-      <h2>حساب من</h2>
-      <p class="lede" style="margin-inline:auto">با شماره موبایلت وارد شو تا رزروهات و اطلاعات حسابت رو اینجا ببینی.</p>
+      <span class="eyebrow" style="align-self:center" id="authEyebrow">ورود با کد یک‌بارمصرف</span>
+      <h2 id="authTitle">حساب من</h2>
+      <p class="lede" style="margin-inline:auto" id="authLede">با شماره موبایلت وارد شو تا رزروهات و اطلاعات حسابت رو اینجا ببینی.</p>
+      <div class="mode-tabs" style="justify-content:center;margin-top:6px">
+        <button type="button" data-auth-mode="login" class="active">ورود</button>
+        <button type="button" data-auth-mode="signup">ثبت‌نام</button>
+      </div>
     </section>
     <section id="loginGateForm" class="card card-pad" style="max-width:420px;margin:0 auto"></section>
 

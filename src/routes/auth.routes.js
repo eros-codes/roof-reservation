@@ -62,7 +62,6 @@ authRouter.post("/otp/send", otpSendLimiter, async (req, res, next) => {
 		await sendMockSms({ phone, type: "OTP", message: otpMessage(code) });
 		res.json({
 			message: "کد تایید ارسال شد.",
-			...(config.isProd ? {} : { devCode: code }),
 		});
 	} catch (error) {
 		next(error);

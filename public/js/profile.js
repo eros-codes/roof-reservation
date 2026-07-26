@@ -43,18 +43,41 @@ function showHub(user) {
   q('accountPhone').value = user.phone;
 }
 
+function mountAuthWidget(mode) {
+  document.querySelectorAll('[data-auth-mode]').forEach((btn) => btn.classList.toggle('active', btn.dataset.authMode === mode));
+  if (mode === 'signup') {
+    q('authEyebrow').textContent = 'ثبت‌نام';
+    q('authTitle').textContent = 'ساخت حساب';
+    q('authLede').textContent = 'اسم و شماره موبایلت رو وارد کن تا حسابت ساخته بشه.';
+    mountOtpWidget(q('loginGateForm'), {
+      purpose: 'LOGIN',
+      extraFields: [{ key: 'name', label: 'نام', required: true }],
+      submitLabel: 'ثبت‌نام',
+      onVerified: async () => { await load(); }
+    });
+  } else {
+    q('authEyebrow').textContent = 'ورود با کد یک‌بارمصرف';
+    q('authTitle').textContent = 'حساب من';
+    q('authLede').textContent = 'با شماره موبایلت وارد شو تا رزروهات و اطلاعات حسابت رو اینجا ببینی.';
+    mountOtpWidget(q('loginGateForm'), {
+      purpose: 'LOGIN',
+      submitLabel: 'ورود',
+      onVerified: async () => { await load(); }
+    });
+  }
+}
+
 function showLoginGate() {
   q('loginGate').hidden = false;
   q('loginGateForm').hidden = false;
   q('accountHub').hidden = true;
   q('logoutBtn').hidden = true;
-  mountOtpWidget(q('loginGateForm'), {
-    purpose: 'LOGIN',
-    extraFields: [{ key: 'name', label: 'نام (اختیاری)' }],
-    submitLabel: 'ورود',
-    onVerified: async () => { await load(); }
-  });
+  mountAuthWidget('login');
 }
+
+document.querySelectorAll('[data-auth-mode]').forEach((btn) => {
+  btn.addEventListener('click', () => mountAuthWidget(btn.dataset.authMode));
+});
 
 q('hubTabs').addEventListener('click', (event) => {
   const btn = event.target.closest('[data-tab]');

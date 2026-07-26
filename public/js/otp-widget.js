@@ -4,7 +4,7 @@ import { escapeHtml } from './ui.js';
 export function mountOtpWidget(container, { purpose, extraFields = [], submitLabel = 'تایید', onVerified }) {
   container.innerHTML = `
     <div class="form-grid otp-widget">
-      ${extraFields.map((f) => `<div class="field"><label>${escapeHtml(f.label)}</label><input data-otp-extra="${f.key}" placeholder="${escapeHtml(f.placeholder || '')}"></div>`).join('')}
+      ${extraFields.map((f) => `<div class="field"><label>${escapeHtml(f.label)}${f.required ? ' *' : ''}</label><input data-otp-extra="${f.key}" placeholder="${escapeHtml(f.placeholder || '')}"></div>`).join('')}
       <div class="field"><label>شماره موبایل</label><input data-otp-phone placeholder="09..." inputmode="tel"></div>
       <button type="button" class="secondary-btn" data-otp-send>ارسال کد تایید</button>
       <div class="field" data-otp-code-field hidden><label>کد تایید</label><input data-otp-code inputmode="numeric" maxlength="6"></div>
@@ -28,12 +28,13 @@ export function mountOtpWidget(container, { purpose, extraFields = [], submitLab
   q('[data-otp-send]').addEventListener('click', async () => {
     const phone = q('[data-otp-phone]').value.trim();
     if (!phone) { showNotice('شماره موبایل رو وارد کن.', 'danger'); return; }
+    const missingField = extraFields.find((f) => f.required && !q(`[data-otp-extra="${f.key}"]`).value.trim());
+    if (missingField) { showNotice(`${missingField.label} رو وارد کن.`, 'danger'); return; }
     const btn = q('[data-otp-send]');
     btn.disabled = true;
     try {
       const data = await api('/api/otp/send', { method: 'POST', body: { phone, purpose } });
-      const isLocalDev = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-      showNotice(`کد ارسال شد${data.devCode && isLocalDev ? ` — کد آزمایشی: ${data.devCode}` : ''}`, 'ok');
+      showNotice('کد ارسال شد', 'ok');
       q('[data-otp-code-field]').hidden = false;
       q('[data-otp-verify]').hidden = false;
       q('[data-otp-code]').focus();
