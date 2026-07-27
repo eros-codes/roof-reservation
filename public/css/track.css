@@ -1,4 +1,4 @@
-/* invoice.html — فاکتور رزرو — استایل اختصاصی همین صفحه. هیچ فایل دیگری این کلاس‌ها را تعریف نمی‌کند. */
+/* track.html — پیگیری رزرو مهمان — استایل اختصاصی همین صفحه. هیچ فایل دیگری این کلاس‌ها را تعریف نمی‌کند. */
 
 
 
@@ -122,6 +122,45 @@
 	padding-bottom: 56px;
 }
 
+.page-head {
+	margin: 30px 0 26px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	justify-content: center;
+	align-items: center;
+}
+
+.page-head[hidden] {
+	display: none;
+}
+
+.page-head h2 {
+	font-family: var(--font-serif);
+	font-weight: 700;
+	font-size: var(--fs-page-title);
+	line-height: 1.2;
+	color: var(--rich-sabel);
+	text-align: center;
+	margin-bottom: 10px;
+}
+
+.page-head .lede {
+	color: var(--deep-taupe);
+	font-size: 14.5px;
+	line-height: 1.85;
+	max-width: 560px;
+	opacity: 0.85;
+	text-align: center;
+}
+
+.grid {
+	display: grid;
+	grid-template-columns: 360px 1fr;
+	gap: 18px;
+	align-items: start;
+}
+
 .card {
 	height: fit-content;
 	background: rgba(239, 234, 228, 0.5);
@@ -151,6 +190,42 @@
 	font-size: 12px;
 	opacity: 0.8;
 	margin-top: 4px;
+}
+
+.form-grid {
+	display: grid;
+	gap: 14px;
+}
+
+.field label {
+	display: block;
+	margin-bottom: 7px;
+	color: var(--deep-taupe);
+	font-size: 12px;
+	font-weight: 600;
+	opacity: 0.85;
+	text-align: center;
+}
+
+input {
+	width: 100%;
+	background: rgba(255, 255, 255, 0.4);
+	color: var(--burnt-oak);
+	border: 1px solid var(--line);
+	border-radius: var(--r-xs);
+	padding: 12px 13px;
+	transition:
+	border-color var(--dur) var(--ease),
+	background var(--dur) var(--ease);
+}
+
+input::placeholder {
+	color: rgba(66, 46, 47, 0.4);
+}
+
+input:focus {
+	border-color: var(--rich-sabel);
+	background: rgba(255, 255, 255, 0.65);
 }
 
 button.chip {
@@ -197,6 +272,14 @@ button.chip {
 .mode-tabs button.active {
 	background: var(--rich-sabel);
 	color: var(--chapel-white);
+}
+
+div.clock-range div.field {
+	width: 45%;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
 }
 
 .primary-btn {
@@ -429,32 +512,34 @@ button.chip {
 	color: var(--rich-sabel);
 }
 
-.amount-row {
+.empty-state {
 	display: flex;
-	justify-content: space-between;
+	flex-direction: column;
+	justify-content: start;
 	align-items: center;
-	padding-top: 14px;
-	margin-top: 4px;
-	border-top: 1px solid var(--line);
+	gap: 5px;
+	text-align: center;
+	padding: 5px 10px;
+	color: var(--deep-taupe);
 }
 
-.amount-row strong {
-	font-family: var(--font-serif);
-	font-size: 22px;
+.empty-state svg {
+	width: 38px;
+	height: 38px;
+	opacity: 0.5;
+}
+
+.empty-state strong {
+	display: block;
 	color: var(--rich-sabel);
-	font-weight: 700;
+	font-size: 14.5px;
 }
 
-.skeleton {
-	background: linear-gradient(
-	90deg,
-	rgba(66, 46, 47, 0.05),
-	rgba(66, 46, 47, 0.11),
-	rgba(66, 46, 47, 0.05)
-	);
-	background-size: 200% 100%;
-	animation: shimmer-bg 1.4s ease-in-out infinite;
-	border-radius: var(--r-xs);
+.empty-state p {
+	font-size: 13px;
+	max-width: 300px;
+	margin: 0 auto;
+	opacity: 0.85;
 }
 
 .admin-menu button.active {
@@ -467,6 +552,12 @@ button.chip {
 	display: block;
 }
 
+@media (max-width: 1023px) {
+	.grid {
+		grid-template-columns: 1fr;
+	}
+}
+
 @media (max-width: 767px) {
 	.shell {
 		width: calc(100% - 24px);
@@ -476,6 +567,12 @@ button.chip {
 @media (max-width: 767px) {
 	.card-pad {
 		padding: 16px;
+	}
+}
+
+@media (max-width: 767px) {
+	.page-head h2 {
+		font-size: 26px;
 	}
 }
 
@@ -534,6 +631,10 @@ button.chip {
 	}
 }
 
+[hidden] {
+	display: none !important;
+}
+
 .map-zone-tabs button.active {
 	background: var(--rich-sabel);
 	border-color: var(--rich-sabel);
@@ -568,53 +669,5 @@ button.chip {
 	}
 	to {
 		opacity: 1;
-	}
-}
-
-@keyframes shimmer-bg {
-	0% {
-		background-position: 200% 0;
-	}
-	100% {
-		background-position: -200% 0;
-	}
-}
-
-/* ===== محتوای قبلیِ invoice.css (بدون تغییر؛ همچنان آخر لود می‌شود تا تقدم قبلی حفظ شود) ===== */
-
-/* ==========================================================================
-   Invoice (print)
-   ========================================================================== */
-
-.invoice-head {
-	display: flex;
-	justify-content: space-between;
-	align-items: flex-start;
-	gap: 16px;
-	margin-bottom: 20px;
-	padding-bottom: 20px;
-	border-bottom: 1px dashed var(--line);
-}
-.invoice-num {
-	color: var(--deep-taupe);
-	font-size: 12.5px;
-}
-
-@media print {
-	.topbar,
-	.actions {
-		display: none !important;
-	}
-	.shell {
-		width: 100%;
-		padding: 0;
-	}
-	.card {
-		box-shadow: none;
-		background: #fff;
-		border-color: #ddd;
-	}
-	body {
-		background: #fff;
 	}
 }
