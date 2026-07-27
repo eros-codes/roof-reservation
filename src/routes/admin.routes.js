@@ -161,21 +161,27 @@ adminRouter.post('/tables', requireRole('OWNER', 'MANAGER'), async (req, res, ne
 
 adminRouter.patch('/tables/:id', requireRole('OWNER', 'MANAGER'), async (req, res, next) => {
   try {
-    for (const key of ["x", "y", "width", "height", "rotation"])
-		if (data[key] !== undefined) data[key] = Number(data[key]);
-	if (
-		data.minGuests !== undefined &&
-		data.maxGuests !== undefined &&
-		data.minGuests > data.maxGuests
-	) {
-		return res
-			.status(400)
-			.json({ message: "حداقل نفر نمی‌تواند از حداکثر بیشتر باشد." });
-	}
-	const table = await prisma.cafeTable.update({
-		where: { id: req.params.id },
-		data,
-	});
+    const data = { ...req.body };
+
+    for (const key of ["x", "y", "width", "height", "rotation"]) {
+      if (data[key] !== undefined) data[key] = Number(data[key]);
+    }
+
+    if (
+      data.minGuests !== undefined &&
+      data.maxGuests !== undefined &&
+      data.minGuests > data.maxGuests
+    ) {
+      return res
+        .status(400)
+        .json({ message: "حداقل نفر نمی‌تواند از حداکثر بیشتر باشد." });
+    }
+
+    const table = await prisma.cafeTable.update({
+      where: { id: req.params.id },
+      data,
+    });
+
     res.json({ table });
   } catch (error) {
     next(error);
