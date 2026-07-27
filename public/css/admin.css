@@ -100,8 +100,8 @@
 .ghost-btn {
 	font-size: 13px;
 	font-weight: 500;
-	color: var(--rich-sabel);
-	opacity: 0.6;
+	color: white;
+	opacity: 0.9;
 	position: relative;
 	padding: 0;
 	background: none;
@@ -109,6 +109,7 @@
 	padding: 10px 20px;
 	border: 1px solid var(--burnt-oak);
 	border-radius: 8px;
+	background-color: var(--rich-sabel);
 }
 
 .nav a::after {

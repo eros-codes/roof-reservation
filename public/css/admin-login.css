@@ -228,3 +228,8 @@ div.clock-range div.field {
 		transform: translateX(-150%);
 	}
 }
+section.card-pad a.login{
+	background-color: transparent !important;
+	color: var(--rich-sabel) !important;
+	font-weight: 700 !important;
+}

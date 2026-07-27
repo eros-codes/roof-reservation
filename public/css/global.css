@@ -7,7 +7,7 @@
 	--chapel-white: #ffff;
 	--antique-veil: #c5bcad;
 	--deep-taupe: #503d22;
-	--rich-sabel: #43392e;
+	--rich-sabel: #3b3229;
 	--burnt-oak: #8C7864;
 	--bgc: linear-gradient(180deg, #564c34 0%, #E6DAC8 30%, #CBB9A4 80%);
 		--journey-1: var(--burnt-oak);
@@ -63,10 +63,14 @@ body {
 }
 
 a {
-	background-color: transparent !important;
+	background-color: var(--rich-sabel) !important;
 	color: white !important;
 	/* border: 2px solid var(--rich-sabel) !important; */
 	text-decoration: none;
+	opacity: 0.9 !important;
+}
+a.brand{
+	background-color: transparent !important;
 }
 button,
 input,
