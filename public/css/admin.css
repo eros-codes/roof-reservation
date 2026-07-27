@@ -1675,13 +1675,17 @@ div.chip-row button.chip{
   stroke-opacity: .4;
   stroke-width: 2;
 }
-.mini-chair { cursor: pointer; transition: filter .2s var(--ease); }
+.mini-chair { 
+	cursor: pointer; transition: filter .2s var(--ease);
+}
 .mini-chair.is-selected .mini-chair-seat {
   stroke: var(--rich-sabel);
   stroke-width: 2;
   stroke-opacity: 1;
 }
-.mini-chair.is-selected { filter: drop-shadow(0 0 4px rgba(66,46,47,.35)); }
+.mini-chair.is-selected { 
+	filter: drop-shadow(0 0 4px rgba(66,46,47,.35)); 
+}
 
 .shared-dot {
   fill: var(--warn);
