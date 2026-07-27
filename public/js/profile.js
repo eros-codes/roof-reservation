@@ -13,24 +13,29 @@ function dateBlock(iso) {
 }
 
 function renderReservations(reservations) {
-  const box = q('reservationsBox');
-  box.className = '';
-  if (!reservations.length) {
-    box.innerHTML = `<div class="empty-state">${ICONS.empty}<strong>هنوز رزروی ثبت نشده</strong><p>از صفحه اصلی یک تاریخ انتخاب کن تا اولین رزروت اینجا بیفته.</p></div>`;
-    return;
-  }
-  box.innerHTML = `<div class="timeline">${reservations.map((r) => `
+	const box = q("reservationsBox");
+	box.className = "";
+	box.style.height = "";
+	if (!reservations.length) {
+		box.innerHTML = `<div class="empty-state">${ICONS.empty}<strong>هنوز رزروی ثبت نشده</strong><p>از صفحه اصلی یک تاریخ انتخاب کن تا اولین رزروت اینجا بیفته.</p></div>`;
+		return;
+	}
+	box.innerHTML = `<div class="timeline">${reservations
+		.map(
+			(r) => `
     <div class="timeline-item">
       ${dateBlock(r.startAt)}
       <div class="timeline-body">
-        <strong>میز ${r.tables.map((t) => t.table.displayNumber).join(' و ')} · ${r.guestCount.toLocaleString('fa-IR')} نفر</strong>
+        <strong>میز ${r.tables.map((t) => t.table.displayNumber).join(" و ")} · ${r.guestCount.toLocaleString("fa-IR")} نفر</strong>
         <span>${faDateTime(r.startAt)} · ${toman(r.totalAmount)}</span>
       </div>
       <div class="timeline-actions">
         <span class="status ${r.status}">${statusFa(r.status)}</span>
         <a class="secondary-btn" href="/invoice.html?id=${r.id}">فاکتور</a>
       </div>
-    </div>`).join('')}</div>`;
+    </div>`,
+		)
+		.join("")}</div>`;
 }
 
 function showHub(user) {

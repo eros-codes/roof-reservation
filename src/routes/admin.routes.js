@@ -71,17 +71,53 @@ adminRouter.post('/reservations/manual', async (req, res, next) => {
   }
 });
 
-adminRouter.patch('/reservations/:id/status', async (req, res, next) => {
-  try {
-    const allowedForReception = ['COMPLETED', 'NO_SHOW', 'CANCELLED'];
-    if (req.admin.role === 'RECEPTION' && !allowedForReception.includes(req.body.status)) {
-      return res.status(403).json({ message: 'پذیرش فقط می‌تواند completed، no_show یا cancelled ثبت کند.' });
-    }
-    const reservation = await prisma.reservation.update({ where: { id: req.params.id }, data: { status: req.body.status, notes: req.body.notes || undefined } });
-    res.json({ reservation });
-  } catch (error) {
-    next(error);
-  }
+const ADMIN_SETTABLE_STATUSES = [
+	"CONFIRMED",
+	"COMPLETED",
+	"NO_SHOW",
+	"CANCELLED",
+];
+
+adminRouter.patch("/reservations/:id/status", async (req, res, next) => {
+	try {
+		const allowedForReception = ["COMPLETED", "NO_SHOW", "CANCELLED"];
+		if (
+			req.admin.role === "RECEPTION" &&
+			!allowedForReception.includes(req.body.status)
+		) {
+			return res
+				.status(403)
+				.json({
+					message:
+						"پذیرش فقط می‌تواند completed، no_show یا cancelled ثبت کند.",
+				});
+		}
+		if (!ADMIN_SETTABLE_STATUSES.includes(req.body.status)) {
+			return res
+				.status(400)
+				.json({ message: "این وضعیت از پنل ادمین قابل تنظیم نیست." });
+		}
+		const reservation = await prisma.reservation.update({
+			where: { id: req.params.id },
+			data: {
+				status: req.body.status,
+				notes: req.body.notes || undefined,
+			},
+		});
+		if (req.body.status === "CANCELLED") {
+			const { cancellationMessage } = await import("../lib/sms.js");
+			await sendMockSms({
+				phone: reservation.customerPhone,
+				type: "CANCELLATION",
+				message: cancellationMessage
+					? cancellationMessage(reservation)
+					: `رزرو ${reservation.trackingCode} لغو شد.`,
+			}).catch((e) => console.error("SMS لغو ارسال نشد:", e));
+		}
+		res.json({ reservation });
+	} catch (error) {
+		next(error);
+	}
 });
 
 adminRouter.get('/tables', async (_req, res, next) => {
@@ -108,9 +144,15 @@ async function uniqueTableCode(zone) {
 adminRouter.post('/tables', requireRole('OWNER', 'MANAGER'), async (req, res, next) => {
   try {
     const data = { ...req.body };
-    if (!data.code) data.code = await uniqueTableCode(data.zone);
-    if (!data.displayNumber) data.displayNumber = data.code.replace(/^\D+/, '');
-    const table = await prisma.cafeTable.create({ data });
+	if (!data.code) data.code = await uniqueTableCode(data.zone);
+	if (!data.displayNumber)
+		data.displayNumber = data.code.replace(/^\D+/, "") || data.code;
+	if (Number(data.minGuests) > Number(data.maxGuests)) {
+		return res
+			.status(400)
+			.json({ message: "حداقل نفر نمی‌تواند از حداکثر بیشتر باشد." });
+	}
+	const table = await prisma.cafeTable.create({ data });
     res.status(201).json({ table });
   } catch (error) {
     next(error);
@@ -119,10 +161,21 @@ adminRouter.post('/tables', requireRole('OWNER', 'MANAGER'), async (req, res, ne
 
 adminRouter.patch('/tables/:id', requireRole('OWNER', 'MANAGER'), async (req, res, next) => {
   try {
-    const data = { ...req.body };
-    for (const key of ['capacity', 'minGuests', 'maxGuests']) if (data[key] !== undefined) data[key] = Number(data[key]);
-    for (const key of ['x', 'y', 'width', 'height', 'rotation']) if (data[key] !== undefined) data[key] = Number(data[key]);
-    const table = await prisma.cafeTable.update({ where: { id: req.params.id }, data });
+    for (const key of ["x", "y", "width", "height", "rotation"])
+		if (data[key] !== undefined) data[key] = Number(data[key]);
+	if (
+		data.minGuests !== undefined &&
+		data.maxGuests !== undefined &&
+		data.minGuests > data.maxGuests
+	) {
+		return res
+			.status(400)
+			.json({ message: "حداقل نفر نمی‌تواند از حداکثر بیشتر باشد." });
+	}
+	const table = await prisma.cafeTable.update({
+		where: { id: req.params.id },
+		data,
+	});
     res.json({ table });
   } catch (error) {
     next(error);
@@ -271,12 +324,31 @@ adminRouter.get('/admins', requireRole('OWNER'), async (_req, res, next) => {
   }
 });
 
-adminRouter.post('/admins', requireRole('OWNER'), async (req, res, next) => {
-  try {
-    const passwordHash = await bcrypt.hash(req.body.password, 10);
-    const admin = await prisma.adminUser.create({ data: { email: req.body.email, name: req.body.name, role: req.body.role, passwordHash } });
-    res.status(201).json({ admin: { id: admin.id, email: admin.email, name: admin.name, role: admin.role } });
-  } catch (error) {
-    next(error);
-  }
+adminRouter.post("/admins", requireRole("OWNER"), async (req, res, next) => {
+	try {
+		if (!req.body.password || req.body.password.length < 8) {
+			return res
+				.status(400)
+				.json({ message: "رمز عبور باید حداقل ۸ کاراکتر باشد." });
+		}
+		const passwordHash = await bcrypt.hash(req.body.password, 10);
+		const admin = await prisma.adminUser.create({
+			data: {
+				email: req.body.email,
+				name: req.body.name,
+				role: req.body.role,
+				passwordHash,
+			},
+		});
+		res.status(201).json({
+			admin: {
+				id: admin.id,
+				email: admin.email,
+				name: admin.name,
+				role: admin.role,
+			},
+		});
+	} catch (error) {
+		next(error);
+	}
 });

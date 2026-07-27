@@ -13,7 +13,7 @@ publicRouter.get('/config', async (_req, res, next) => {
 
 publicRouter.get('/tables', async (_req, res, next) => {
   try {
-    const { tables } = await getTablesWithConnections();
+    const { tables } = await getTablesWithConnections().tables;
     res.json({ tables });
   } catch (error) {
     next(error);

@@ -1,11 +1,5 @@
 /* global.css — پایه‌ی مشترک همه‌ی صفحات: روت وریبل‌ها، فونت، ریست. باید تو همه‌ی HTMLها اول از همه لینک بشه. */
 
-/* ==========================================================================
-   Roof Reservation — Design System v2
-   Rebuilt against the real About codebase: Lora + Baloo Bhaijaan 2,
-   near-zero radius, hairline borders, glass reserved for the header only.
-   ========================================================================== */
-
 @import url("https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&family=Baloo+Bhaijaan+2:wght@400..800&display=swap");
 
 
