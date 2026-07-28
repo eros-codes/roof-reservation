@@ -2,15 +2,22 @@ export async function api(path, options = {}) {
   const res = await fetch(path, {
     credentials: 'include',
     ...options,
-    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
-    body: options.body && typeof options.body !== 'string' ? JSON.stringify(options.body) : options.body
+    headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...(options.headers || {}) },    body: options.body && typeof options.body !== 'string' ? JSON.stringify(options.body) : options.body
   });
-  const data = await res.json().catch((err) => {
-    console.warn('پاسخ سرور JSON معتبر نبود:', err);
-    return {};
-  });
-  if (!res.ok) throw new Error(data.message || 'خطا در ارتباط با سرور');
-  return data;
+  const text = await res.text();
+  let data = {};
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      if (res.ok) console.warn('پاسخ سرور JSON معتبر نبود');
+    }
+  }
+  if (!res.ok) {
+    const error = new Error(data.message || 'خطا در ارتباط با سرور');
+    error.status = res.status;
+    throw error;
+  }  return data;
 }
 
 export function toman(amount) {

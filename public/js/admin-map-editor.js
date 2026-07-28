@@ -32,10 +32,14 @@ export async function mountAdminMapEditor({ container, tables = [], connections 
   let currentTables = [...tables];
   let currentConnections = [...connections];
 
+  let noticeTimer = null;
   function showNotice(message, type = '') {
+    clearTimeout(noticeTimer);
     notice.className = type ? `notice ${type}` : 'notice';
     notice.textContent = message;
-    if (type !== 'danger') setTimeout(() => { if (notice.textContent === message) { notice.className = ''; notice.textContent = ''; } }, 2200);
+    if (type !== 'danger') {
+      noticeTimer = setTimeout(() => { notice.className = ''; notice.textContent = ''; }, 2200);
+    }
   }
 
   const dialog = mountTableEditorDialog({
@@ -66,7 +70,9 @@ export async function mountAdminMapEditor({ container, tables = [], connections 
   try {
     await map.init();
   } catch (error) {
-    query('[data-editor-loading]').innerHTML = `<span></span><b>بارگذاری نقشه با خطا مواجه شد: ${error.message}</b>`;
+    const loading = query('[data-editor-loading]');
+    loading.innerHTML = '<span></span><b></b>';
+    loading.querySelector('b').textContent = `بارگذاری نقشه با خطا مواجه شد: ${error.message}`;
     throw error;
   }
   query('[data-editor-loading]').hidden = true;

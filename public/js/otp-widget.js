@@ -4,7 +4,7 @@ import { escapeHtml } from './ui.js';
 export function mountOtpWidget(container, { purpose, extraFields = [], submitLabel = 'تایید', onVerified }) {
   container.innerHTML = `
     <div class="form-grid otp-widget">
-      ${extraFields.map((f) => `<div class="field"><label>${escapeHtml(f.label)}${f.required ? ' *' : ''}</label><input data-otp-extra="${f.key}" placeholder="${escapeHtml(f.placeholder || '')}"></div>`).join('')}
+      ${extraFields.map((f) => `<div class="field"><label>${escapeHtml(f.label)}${f.required ? ' *' : ''}</label><input data-otp-extra="${escapeHtml(f.key)}" placeholder="${escapeHtml(f.placeholder || '')}"></div>`).join('')}
       <div class="field"><label>شماره موبایل</label><input data-otp-phone placeholder="09..." inputmode="tel"></div>
       <button type="button" class="secondary-btn" data-otp-send>ارسال کد تایید</button>
       <div class="field" data-otp-code-field hidden><label>کد تایید</label><input data-otp-code inputmode="numeric" maxlength="6"></div>
@@ -33,15 +33,28 @@ export function mountOtpWidget(container, { purpose, extraFields = [], submitLab
     const btn = q('[data-otp-send]');
     btn.disabled = true;
     try {
-      const data = await api('/api/otp/send', { method: 'POST', body: { phone, purpose } });
+      await api('/api/otp/send', { method: 'POST', body: { phone, purpose } });
       showNotice('کد ارسال شد', 'ok');
       q('[data-otp-code-field]').hidden = false;
       q('[data-otp-verify]').hidden = false;
       q('[data-otp-code]').focus();
+      let remaining = 60;
+      const label = btn.textContent;
+      const countdown = setInterval(() => {
+        remaining -= 1;
+        if (remaining <= 0) {
+          clearInterval(countdown);
+          btn.disabled = false;
+          btn.textContent = label;
+          return;
+        }
+        btn.textContent = `ارسال مجدد (${remaining.toLocaleString('fa-IR')})`;
+      }, 1000);
+      return;
     } catch (error) {
       showNotice(error.message, 'danger');
     } finally {
-      btn.disabled = false;
+      if (!btn.textContent.startsWith('ارسال مجدد')) btn.disabled = false;
     }
   });
 

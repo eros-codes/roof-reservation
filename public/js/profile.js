@@ -1,5 +1,6 @@
 import { api, faDateTime, statusFa, toman } from './api.js';
-import { ICONS, initHeaderScroll } from './ui.js';
+import { ICONS, initHeaderScroll, escapeHtml, tablesText } from './ui.js';
+
 import { mountOtpWidget } from './otp-widget.js';
 
 initHeaderScroll();
@@ -26,12 +27,12 @@ function renderReservations(reservations) {
     <div class="timeline-item">
       ${dateBlock(r.startAt)}
       <div class="timeline-body">
-        <strong>میز ${r.tables.map((t) => t.table.displayNumber).join(" و ")} · ${r.guestCount.toLocaleString("fa-IR")} نفر</strong>
+        <strong>میز ${escapeHtml(tablesText(r))} · ${Number(r.guestCount || 0).toLocaleString("fa-IR")} نفر</strong>
         <span>${faDateTime(r.startAt)} · ${toman(r.totalAmount)}</span>
       </div>
       <div class="timeline-actions">
-        <span class="status ${r.status}">${statusFa(r.status)}</span>
-        <a class="secondary-btn" href="/invoice.html?id=${r.id}">فاکتور</a>
+        <span class="status ${escapeHtml(r.status)}">${escapeHtml(statusFa(r.status))}</span>
+        <a class="secondary-btn" href="/invoice.html?id=${encodeURIComponent(r.id)}">فاکتور</a>
       </div>
     </div>`,
 		)
@@ -45,7 +46,7 @@ function showHub(user) {
   q('logoutBtn').hidden = false;
   q('hubGreeting').textContent = user.name ? `سلام ${user.name}` : 'حساب من';
   q('accountName').value = user.name || '';
-  q('accountPhone').value = user.phone;
+  q('accountPhone').value = user.phone || '';
 }
 
 function mountAuthWidget(mode) {
@@ -114,16 +115,28 @@ q('saveAccountBtn').addEventListener('click', async () => {
 });
 
 async function load() {
+  let user;
   try {
-    const { user } = await api('/api/me');
-    if (!user) { showLoginGate(); return; }
-    showHub(user);
-    const { reservations } = await api('/api/reservations/profile/list');
-    renderReservations(reservations);
+    ({ user } = await api('/api/me'));
   } catch (error) {
     showLoginGate();
     const notice = q('loginGateForm').querySelector('[data-otp-notice]');
     if (notice) { notice.className = 'notice danger'; notice.textContent = error.message; }
+    return;
+  }
+
+  if (!user) { showLoginGate(); return; }
+  showHub(user);
+
+  try {
+    const { reservations } = await api('/api/reservations/profile/list');
+    renderReservations(reservations || []);
+  } catch (error) {
+    const box = q('reservationsBox');
+    box.className = '';
+    box.style.height = '';
+    box.innerHTML = '<div class="notice danger"></div>';
+    box.querySelector('.notice').textContent = error.message;
   }
 }
 

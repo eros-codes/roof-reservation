@@ -15,7 +15,8 @@ function row(icon, label, value) {
 }
 
 function renderInvalid(message) {
-  box.innerHTML = `<h3>پرداخت</h3><div class="notice danger">${message}</div><div class="actions"><a class="primary-btn" href="/">رزرو جدید</a></div>`;
+  box.innerHTML = `<h3>پرداخت</h3><div class="notice danger"></div><div class="actions"><a class="primary-btn" href="/">رزرو جدید</a></div>`;
+  box.querySelector('.notice').textContent = message;
 }
 
 function renderExpired(title = 'زمان نگه‌داری تمام شد', message = 'میز دیگر برات نگه داشته نمی‌شه؛ از صفحه‌ی رزرو دوباره انتخاب کن.') {
@@ -48,7 +49,8 @@ function renderSuccess() {
       <div class="result-icon ok">${ICONS.check}</div>
       <h3>پرداخت موفق بود</h3>
       <p>رزروت تایید شد.</p>
-      <div class="tracking-code">${reservation.trackingCode}</div>
+      <div class="tracking-code">${escapeHtml(reservation.trackingCode)}</div>
+
     </div>`;
   setTimeout(() => { location.href = `/invoice.html?id=${reservation.id}`; }, 1400);
 }
@@ -59,7 +61,7 @@ function renderFail(message) {
     <div class="result-state">
       <div class="result-icon fail">${ICONS.x}</div>
       <h3>پرداخت ناموفق بود</h3>
-      <p>${message || 'میز تا پایان زمان نگه‌داری همچنان براته؛ می‌تونی دوباره تلاش کنی.'}</p>
+      <p>${escapeHtml(message || 'میز تا پایان زمان نگه‌داری همچنان براته؛ می‌تونی دوباره تلاش کنی.')}</p>
       <button class="primary-btn" id="retryPay" style="max-width:180px">تلاش دوباره</button>
     </div>`;
   document
@@ -70,6 +72,7 @@ function renderFail(message) {
 }
 
 function render() {
+  if (ring) { ring.stop(); ring = null; }
   const holdActive = ['HOLD', 'PAYMENT_PENDING'].includes(reservation.status) && reservation.holdExpiresAt && new Date(reservation.holdExpiresAt) > new Date();
 
   box.innerHTML = `
@@ -78,7 +81,7 @@ function render() {
       ${row(ICONS.receipt, 'کد پیگیری', reservation.trackingCode)}
       ${row(ICONS.table, 'میز', tablesText(reservation))}
       ${row(ICONS.clock, 'زمان', `${faDateTime(reservation.startAt)} تا ${endTimeText(reservation)}`)}
-      ${row(ICONS.users, 'تعداد نفرات', reservation.guestCount.toLocaleString('fa-IR'))}
+      ${row(ICONS.users, 'تعداد نفرات', Number(reservation.guestCount || 0).toLocaleString('fa-IR'))}
       <div class="amount-row"><span>مبلغ قابل پرداخت</span><strong>${toman(reservation.totalAmount)}</strong></div>
     </div>
 
@@ -112,6 +115,7 @@ async function pay() {
 
 async function init() {
   if (!id) return renderInvalid('شناسه رزرو در آدرس صفحه پیدا نشد.');
+  box.innerHTML = '<div class="notice">در حال بارگذاری…</div>';
   const { reservation: r } = await api(`/api/reservations/${id}`);
   reservation = r;
 
@@ -130,6 +134,9 @@ async function init() {
 
   if (reservation.status === 'CANCELLED') return renderExpired('این رزرو لغو شده', 'این رزرو لغو شده؛ از صفحه‌ی رزرو می‌تونی دوباره یه میز انتخاب کنی.');
   if (reservation.status === 'EXPIRED') return renderExpired();
+  if (reservation.status === 'COMPLETED' || reservation.status === 'NO_SHOW') {
+    return renderExpired('این رزرو بسته شده', 'این رزرو دیگه قابل پرداخت نیست؛ برای رزرو جدید به صفحه‌ی اصلی برو.');
+  }
   render();
 }
 

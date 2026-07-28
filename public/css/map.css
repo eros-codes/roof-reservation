@@ -421,6 +421,10 @@
 	stroke-linecap: round;
 	pointer-events: none;
 }
+.table-number-badge {
+	pointer-events: none;
+}
+
 .table-number-bg {
 	fill: var(--table-label-bg);
 	stroke: var(--table-edge);
@@ -459,6 +463,11 @@
 	stroke: rgba(66, 46, 47, 0.21);
 	stroke-width: 1;
 	stroke-linecap: round;
+}
+
+.shared-seat-dot {
+	fill: var(--rich-sabel);
+	opacity: 0.5;
 }
 .sofa-capacity {
 	fill: rgba(239, 234, 228, 0.84);

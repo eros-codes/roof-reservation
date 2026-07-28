@@ -273,7 +273,7 @@ export class RoofMap {
 
   async init() {
     const [svgText, config] = await Promise.all([
-      fetch(this.baseUrl, { cache: 'no-cache' }).then((response) => {
+      fetch(this.baseUrl).then((response) => {
         if (!response.ok) throw new Error('فایل پایه نقشه بارگذاری نشد.');
         return response.text();
       }),
@@ -292,9 +292,9 @@ export class RoofMap {
     this.config = config;
     this.defaultView = normalizeViewBox(config.defaultView || config.viewBox);
     this.currentView = { ...this.defaultView };
-    this.svg.innerHTML = source.innerHTML;
-    this.svg.setAttribute('viewBox', Object.values(this.defaultView).join(' '));
-    this.svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    this.svg.replaceChildren(...Array.from(source.childNodes).map((node) => document.importNode(node, true)));    
+    const v = this.defaultView;
+    this.svg.setAttribute('viewBox', `${v.x} ${v.y} ${v.width} ${v.height}`);    this.svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
     this.svg.classList.add('roof-floor-map');
     this.tableLayer = this.svg.querySelector('#table-layer') || this.svg.appendChild(svgEl('g', { id: 'table-layer' }));
     this.comboLayer = this.svg.querySelector('#combo-layer') || this.svg.insertBefore(svgEl('g', { id: 'combo-layer' }), this.tableLayer);
@@ -310,7 +310,7 @@ export class RoofMap {
     if (!this.zoneTabs) return;
     const entries = Object.entries(this.config.zones || {});
     this.zoneTabs.innerHTML = entries.map(([key, zone]) => (
-      `<button type="button" data-map-zone="${key}" class="${key === 'ALL' ? 'active' : ''}">${zone.label}</button>`
+      `<button type="button" data-map-zone="${key}" class="${key === 'ALL' ? 'active' : ''}"></button>`
     )).join('');
     this.zoneTabs.querySelectorAll('[data-map-zone]').forEach((button) => {
       button.addEventListener('click', () => this.focusZone(button.dataset.mapZone));
@@ -328,6 +328,8 @@ export class RoofMap {
     });
 
     this.svg.addEventListener('wheel', (event) => {
+      // زوم فقط با Ctrl/⌘ + چرخ؛ در غیر این صورت صفحه عادی اسکرول بشه
+      if (!event.ctrlKey && !event.metaKey) return;
       event.preventDefault();
       const factor = event.deltaY < 0 ? 1.14 : 1 / 1.14;
       this.zoomBy(factor, this.clientToSvg(event.clientX, event.clientY));
@@ -439,7 +441,15 @@ export class RoofMap {
 
   setSelected(tableIds = []) {
     this.selectedIds = [...tableIds];
-    this.render();
+    // به‌جای بازسازی کل نقشه، فقط کلاس وضعیت هر میز به‌روز می‌شه
+    this.tables.forEach((table) => {
+      const anchor = this.tableNodes.get(table.id);
+      if (!anchor) return;
+      const stateClass = tableStateClass(table, this.selectedIds, this.editable);
+      anchor.classList.remove('is-selected', 'is-unavailable', 'is-neutral', 'is-perfect', 'is-soft');
+      anchor.classList.add(stateClass);
+    });
+    this.drawComboConnector();
   }
 
   render() {
@@ -543,7 +553,7 @@ export class RoofMap {
       table.y = rounded(this.drag.original.y + dy);
       anchor.setAttribute('transform', `translate(${table.x} ${table.y})`);
       this.onTableMove?.(table, { live: true });
-      this.drawComboConnector();
+      if (this.selectedIds.length === 2) this.drawComboConnector();
     });
     const finish = (event) => {
       if (!this.drag || this.drag.pointerId !== event.pointerId) return;
@@ -573,6 +583,6 @@ export class RoofMap {
       this.comboLayer.append(path, badge);
     }
     path.setAttribute('d', `M${a.x} ${a.y}Q${midX} ${midY} ${b.x} ${b.y}`);
-    badge.setAttribute('transform', `translate(${midX} ${midY - 3})`);
+    badge?.setAttribute('transform', `translate(${midX} ${midY - 3})`);
   }
 }

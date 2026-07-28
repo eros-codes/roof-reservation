@@ -96,7 +96,8 @@ async function loadDashboard() {
       + kpi('ban', 'عدم حضور (No-show)', dashboard.noShows.toLocaleString('fa-IR'))
       + kpi('receipt', 'درآمد کل', toman(dashboard.totalRevenue));
   } catch (error) {
-    el('dashboardBox').innerHTML = `<div class="notice danger">${error.message}</div>`;
+    el('dashboardBox').innerHTML = '<div class="notice danger"></div>';
+    el('dashboardBox').querySelector('.notice').textContent = error.message;
   }
 }
 
@@ -106,29 +107,41 @@ function statusOptions() {
     <option value="COMPLETED">تکمیل‌شده</option>
     <option value="NO_SHOW">عدم حضور مشتری</option>
     <option value="CANCELLED">لغو رزرو</option>
-    ${state.admin.role !== 'RECEPTION' ? '<option value="CONFIRMED">تایید</option>' : ''}`;
+    ${state.admin?.role !== 'RECEPTION' ? '<option value="CONFIRMED">تایید</option>' : ''}`;
 }
 
 async function loadReservations() {
   el('reservationBox').innerHTML = '<div class="skeleton" style="height:180px"></div>';
-  const { reservations } = await api('/api/admin/reservations');
-  if (!reservations.length) {
+  let reservations;
+  try {
+    ({ reservations } = await api('/api/admin/reservations'));
+  } catch (error) {
+    el('reservationBox').innerHTML = '<div class="notice danger"></div>';
+    el('reservationBox').querySelector('.notice').textContent = error.message;
+    return;
+  }
+  if (!reservations?.length) {
     el('reservationBox').innerHTML = `<div class="empty-state">${ICONS.empty}<strong>هنوز رزروی ثبت نشده</strong><p>رزروهای جدید همین‌جا ظاهر می‌شن.</p></div>`;
     return;
   }
 
-  el('reservationBox').innerHTML = `<div id="reservationsNotice"></div><div class="table-scroll"><table class="table-list"><thead><tr><th>کد</th><th>مشتری</th><th>زمان</th><th>میز</th><th>مبلغ</th><th>وضعیت</th><th>عملیات</th></tr></thead><tbody>${reservations.map((reservation) => `
+  el("reservationBox").innerHTML =
+		`<div id="reservationsNotice"></div><div class="table-scroll"><table class="table-list"><thead><tr><th>کد</th><th>مشتری</th><th>زمان</th><th>میز</th><th>مبلغ</th><th>وضعیت</th><th>عملیات</th></tr></thead><tbody>${reservations
+			.map(
+				(reservation) => `
     <tr>
-      <td>${reservation.trackingCode}</td>
+      <td>${escapeHtml(reservation.trackingCode)}</td>
       <td>${escapeHtml(reservation.customerName)}<br><small style="color:var(--deep-taupe)">${escapeHtml(reservation.customerPhone)}</small></td>
       <td>${faDateTime(reservation.startAt)}</td>
-      <td>${reservation.tables.map((item) => item.table.displayNumber).join(' و ')}</td>
+      <td>${escapeHtml((reservation.tables || []).map((item) => item.table.displayNumber).join(" و "))}</td>
       <td>${toman(reservation.totalAmount)}</td>
-      <td><span class="status ${reservation.status}">${statusFa(reservation.status)}</span></td>
-      <td><select data-status="${reservation.id}">${statusOptions()}</select></td>
-    </tr>`).join('')}</tbody></table></div>`;
+      <td><span class="status ${escapeHtml(reservation.status)}">${escapeHtml(statusFa(reservation.status))}</span></td>
+      <td><select data-status="${escapeHtml(reservation.id)}">${statusOptions()}</select></td>
+    </tr>`,
+			)
+			.join("")}</tbody></table></div>`;
 
-  document.querySelectorAll('[data-status]').forEach((select) => {
+  el('reservationBox').querySelectorAll('[data-status]').forEach((select) => {
     select.addEventListener('change', async () => {
       if (!select.value) return;
       const notice = el('reservationsNotice');
@@ -147,7 +160,9 @@ async function loadReservations() {
 document.querySelectorAll('[data-mstep]').forEach((button) => {
   button.addEventListener('click', () => {
     const input = el('mGuests');
-    input.value = Math.min(20, Math.max(1, Number(input.value || 1) + Number(button.dataset.mstep)));
+    const max = Number(input.max) || 20;
+    const min = Number(input.min) || 1;
+    input.value = Math.min(max, Math.max(min, Number(input.value || min) + Number(button.dataset.mstep)));
   });
 });
 
@@ -173,18 +188,18 @@ async function createManual() {
   const notice = el('manualNotice');
   try {
     if (!state.manualSelected.length) throw new Error('حداقل یک میز رو انتخاب کن.');
-    const { reservation } = await api('/api/admin/reservations/manual', {
-      method: 'POST',
-      body: {
-        tableIds: state.manualSelected,
-        date: el('mDate').value,
-        startTime: el('mTime').value,
-        durationMinutes: state.manualDuration,
-        guestCount: Number(el('mGuests').value),
-        customerName: el('mName').value,
-        customerPhone: el('mPhone').value
-      }
-    });
+    const { reservation } = await api("/api/admin/reservations/manual", {
+		method: "POST",
+		body: {
+			tableIds: state.manualSelected,
+			date: el("mDate").value,
+			startTime: el("mTime").value,
+			durationMinutes: state.manualDuration,
+			guestCount: Number(el("mGuests").value),
+			customerName: el("mName").value.trim(),
+			customerPhone: el("mPhone").value.trim(),
+		},
+	});
     notice.className = 'notice ok';
     notice.textContent = `رزرو دستی ثبت شد: ${reservation.trackingCode}`;
     state.manualSelected = [];
@@ -202,20 +217,25 @@ el('addTableBtn').addEventListener('click', () => state.mapEditor?.openCreateDia
 /* ---------- tables + map management ---------- */
 function renderTableList() {
   el('tableCount').textContent = `${state.tables.length.toLocaleString('fa-IR')} میز`;
-  el('tableBox').innerHTML = `<div id="tableListNotice"></div><div class="table-scroll"><table class="table-list"><thead><tr><th>کد</th><th>شماره</th><th>سالن</th><th>شکل</th><th>ظرفیت</th><th>حداقل/حداکثر</th><th>وضعیت</th><th>عملیات</th></tr></thead><tbody>${state.tables.map((table) => `
+  el("tableBox").innerHTML =
+		`<div id="tableListNotice"></div><div class="table-scroll"><table class="table-list"><thead><tr><th>کد</th><th>شماره</th><th>سالن</th><th>شکل</th><th>ظرفیت</th><th>حداقل/حداکثر</th><th>وضعیت</th><th>عملیات</th></tr></thead><tbody>${state.tables
+			.map(
+				(table) => `
     <tr>
-      <td>${table.code}</td>
-      <td>${table.displayNumber}</td>
+      <td>${escapeHtml(table.code)}</td>
+      <td>${escapeHtml(table.displayNumber)}</td>
       <td>${ZONE_FA[table.zone] || table.zone}</td>
       <td>${SHAPE_FA[table.shape] || table.shape}</td>
-      <td>${Number(table.capacity).toLocaleString('fa-IR')}</td>
-      <td>${Number(table.minGuests).toLocaleString('fa-IR')} / ${Number(table.maxGuests).toLocaleString('fa-IR')}</td>
-      <td><span class="status ${table.isActive ? 'CONFIRMED' : 'CANCELLED'}">${table.isActive ? 'فعال' : 'غیرفعال'}</span></td>
+      <td>${Number(table.capacity).toLocaleString("fa-IR")}</td>
+      <td>${Number(table.minGuests).toLocaleString("fa-IR")} / ${Number(table.maxGuests).toLocaleString("fa-IR")}</td>
+      <td><span class="status ${table.isActive ? "CONFIRMED" : "CANCELLED"}">${table.isActive ? "فعال" : "غیرفعال"}</span></td>
       <td class="table-actions-cell">
-        <button type="button" class="secondary-btn" data-edit-table="${table.id}">ویرایش</button>
-        ${canManageTables() ? `<button type="button" class="secondary-btn" data-toggle-table="${table.id}">${table.isActive ? 'غیرفعال' : 'فعال'}</button>` : ''}
+        ${canManageTables() ? `<button type="button" class="secondary-btn" data-edit-table="${escapeHtml(table.id)}">ویرایش</button>` : ""}
+        ${canManageTables() ? `<button type="button" class="secondary-btn" data-toggle-table="${escapeHtml(table.id)}">${table.isActive ? "غیرفعال" : "فعال"}</button>` : ""}
       </td>
-    </tr>`).join('')}</tbody></table></div>`;
+    </tr>`,
+			)
+			.join("")}</tbody></table></div>`;
 
   document.querySelectorAll('[data-edit-table]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -228,6 +248,7 @@ function renderTableList() {
     button.addEventListener('click', async () => {
       const table = state.tables.find((item) => item.id === button.dataset.toggleTable);
       const notice = el('tableListNotice');
+      if (!table) { notice.className = 'notice danger'; notice.textContent = 'این میز دیگه در لیست نیست؛ صفحه رو تازه کن.'; return; }
       try {
         await api(`/api/admin/tables/${table.id}`, { method: 'PATCH', body: { isActive: !table.isActive } });
         await loadTables({ keepSelectedId: table.id });
@@ -269,14 +290,19 @@ async function loadHours() {
     el('hoursBox').innerHTML = `<div class="notice danger">${error.message}</div>`;
     return;
   }
-  el('hoursBox').innerHTML = `<div id="hoursNotice"></div><div class="table-scroll"><table class="table-list"><thead><tr><th>روز</th><th>از ساعت</th><th>تا ساعت</th><th>تعطیل</th><th></th></tr></thead><tbody>${workingHours.map((hour) => `
+  el("hoursBox").innerHTML =
+		`<div id="hoursNotice"></div><div class="table-scroll"><table class="table-list"><thead><tr><th>روز</th><th>از ساعت</th><th>تا ساعت</th><th>تعطیل</th><th></th></tr></thead><tbody>${workingHours
+			.map(
+				(hour) => `
     <tr>
       <td>${DAY_FA[hour.dayOfWeek]}</td>
-      <td><input value="${hour.opensAt}" data-open="${hour.dayOfWeek}" style="max-width:100px"></td>
-      <td><input value="${hour.closesAt}" data-close="${hour.dayOfWeek}" style="max-width:100px"></td>
-      <td><input type="checkbox" ${hour.isClosed ? 'checked' : ''} data-closed="${hour.dayOfWeek}" style="width:18px;height:18px;box-shadow:none"></td>
+      <td><input value="${escapeHtml(hour.opensAt)}" data-open="${hour.dayOfWeek}" style="max-width:100px"></td>
+      <td><input value="${escapeHtml(hour.closesAt)}" data-close="${hour.dayOfWeek}" style="max-width:100px"></td>
+      <td><input type="checkbox" ${hour.isClosed ? "checked" : ""} data-closed="${hour.dayOfWeek}" style="width:18px;height:18px;box-shadow:none"></td>
       <td><button class="secondary-btn" data-save-hour="${hour.dayOfWeek}">ذخیره</button></td>
-    </tr>`).join('')}</tbody></table></div>`;
+    </tr>`,
+			)
+			.join("")}</tbody></table></div>`;
 
   document.querySelectorAll('[data-save-hour]').forEach((button) => {
     button.addEventListener('click', async () => {
@@ -309,24 +335,31 @@ async function loadClosures() {
     el('closuresBox').innerHTML = `<div class="notice danger">${error.message}</div>`;
     return;
   }
-  el('closuresBox').innerHTML = `
+  el("closuresBox").innerHTML = `
     <div id="closuresNotice"></div>
     <div class="form-grid" style="margin-bottom:20px">
       <div class="row"><div class="field"><label>عنوان تعطیلی</label><input id="cTitle" placeholder="مثلاً تعطیلی رسمی"></div><div class="field"><label>تاریخ</label><input id="cDate" type="date"></div></div>
       <div class="row"><div class="field"><label>از ساعت (اختیاری)</label><input id="cStart" type="time" step="900"></div><div class="field"><label>تا ساعت (اختیاری)</label><input id="cEnd" type="time" step="900"></div></div>
       <div class="row">
         <div class="field"><label>سالن</label><select id="cZone"><option value="">کل کافه</option><option value="WINDOW">سالن پنجره</option><option value="CENTER">سالن وسط</option><option value="ROOF">روف گاردن</option></select></div>
-        <div class="field"><label>میز خاص</label><select id="cTable"><option value="">بدون میز خاص</option>${state.tables.map((table) => `<option value="${table.id}">میز ${table.displayNumber}</option>`).join('')}</select></div>
+        <div class="field"><label>میز خاص</label><select id="cTable"><option value="">بدون میز خاص</option>${state.tables.map((table) => `<option value="${escapeHtml(table.id)}">میز ${escapeHtml(table.displayNumber)}</option>`).join("")}</select></div>
       </div>
       <button id="addClosure" class="primary-btn">${ICONS.plus}<span>افزودن تعطیلی / بلاک</span></button>
     </div>
-    <div class="table-scroll"><table class="table-list"><thead><tr><th>عنوان</th><th>تاریخ</th><th>بازه</th><th>سالن/میز</th><th></th></tr></thead><tbody>${closures.map((closure) => `
+    <div class="table-scroll"><table class="table-list"><thead><tr><th>عنوان</th><th>تاریخ</th><th>بازه</th><th>سالن/میز</th><th></th></tr></thead><tbody>${
+		closures
+			.map(
+				(closure) => `
       <tr>
-        <td>${closure.title}</td><td>${new Date(closure.date).toLocaleDateString('fa-IR')}</td>
-        <td>${closure.startTime ? `${closure.startTime} تا ${closure.endTime || '?'}` : 'کل روز'}</td>
-        <td>${ZONE_FA[closure.zone] || ''} ${closure.table ? `میز ${closure.table.displayNumber}` : ''}</td>
+        <td>${escapeHtml(closure.title)}</td><td>${new Date(closure.date).toLocaleDateString("fa-IR")}</td>
+        <td>${closure.startTime ? `${escapeHtml(closure.startTime)} تا ${escapeHtml(closure.endTime || "?")}` : "کل روز"}</td>
+        <td>${ZONE_FA[closure.zone] || ""} ${closure.table ? `میز ${escapeHtml(closure.table.displayNumber)}` : ""}</td>
         <td><button class="danger-btn" data-del-closure="${closure.id}">${ICONS.trash}</button></td>
-      </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--deep-taupe)">تعطیلی ثبت نشده</td></tr>'}</tbody></table></div>`;
+      </tr>`,
+			)
+			.join("") ||
+		'<tr><td colspan="5" style="text-align:center;color:var(--deep-taupe)">تعطیلی ثبت نشده</td></tr>'
+	}</tbody></table></div>`;
 
   el('addClosure').addEventListener('click', async () => {
     try {
@@ -371,7 +404,7 @@ async function loadSettings() {
     return;
   }
   el('settingsBox').innerHTML = `<div class="form-grid">
-    <div class="row">${SETTINGS_FIELDS.map(([key, label]) => `<div class="field"><label>${label}</label><input id="set-${key}" value="${settings[key] ?? ''}"></div>`).join('')}</div>
+    <div class="row">${SETTINGS_FIELDS.map(([key, label]) => `<div class="field"><label>${label}</label><input id="set-${key}" value="${escapeHtml(settings[key] ?? '')}"></div>`).join('')}</div>
     <button id="saveSettings" class="primary-btn">ذخیره تنظیمات</button>
     <div id="settingsNotice" class="notice">قیمت پیش‌فرض: ۱۰۰٬۰۰۰ تومان به ازای هر نفر.</div>
   </div>`;
@@ -417,13 +450,24 @@ async function init() {
     return;
   }
 
-  el('mDate').value = new Date().toISOString().slice(0, 10);
-  renderDurationChips('mDurationRow', () => state.manualDuration, (value) => { state.manualDuration = value; });
+  const now = new Date();
+  const localDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+  el('mDate').value = localDate.toISOString().slice(0, 10);  renderDurationChips('mDurationRow', () => state.manualDuration, (value) => { state.manualDuration = value; });
   await loadTables();
-  await Promise.all([loadDashboard(), loadReservations(), loadHours(), loadClosures(), loadSettings(), loadReports()]);
+  await Promise.all([loadDashboard(), loadReservations()]);
+  // بقیه‌ی بخش‌ها فقط وقتی واقعاً باز می‌شن بارگذاری بشن
+  const lazyLoaders = { hours: loadHours, closures: loadClosures, settings: loadSettings, reports: loadReports };
+  const loaded = new Set();
+  el('adminMenu').addEventListener('click', (event) => {
+    const key = event.target.closest('button')?.dataset.section;
+    if (key && lazyLoaders[key] && !loaded.has(key)) { loaded.add(key); lazyLoaders[key](); }
+  });
 }
 
 init().catch((error) => {
   console.error(error);
-  document.querySelector('.admin-content').insertAdjacentHTML('afterbegin', `<div class="notice danger">${error.message}</div>`);
+  const banner = document.createElement('div');
+  banner.className = 'notice danger';
+  banner.textContent = error.message;
+  document.querySelector('.admin-content').prepend(banner);
 });

@@ -33,13 +33,27 @@ function clearSelection() {
   state.selectedLabel = '';
   state.map?.setSelected([]);
 }
+function invalidateAvailability() {
+	clearSelection();
+	state.availability = null;
+	renderMap();
+	renderCombos();
+	el("searchNotice").className = "notice warn";
+	el("searchNotice").textContent =
+		"شرایط جستجو تغییر کرد؛ دکمه‌ی بررسی میزها رو بزن.";
+	el("selectedDetail").innerHTML =
+		"<h4>نیاز به بررسی دوباره</h4><p>برای دیدن میزهای آزاد این شرایط، دوباره جستجو کن.</p>";
+}
 
 /* ---------- guest stepper ---------- */
 document.querySelectorAll('.stepper [data-step]').forEach((button) => {
   button.addEventListener('click', () => {
     const input = button.parentElement.querySelector('input');
-    const next = Math.min(20, Math.max(1, Number(input.value || 1) + Number(button.dataset.step)));
+    const min = Number(input.min) || 1;
+    const max = Number(input.max) || 20;
+    const next = Math.min(max, Math.max(min, Number(input.value || min) + Number(button.dataset.step)));
     input.value = next;
+    invalidateAvailability();
   });
 });
 
@@ -58,7 +72,7 @@ function renderDates() {
       document.querySelectorAll('.date-chip').forEach((item) => item.classList.remove('active'));
       button.classList.add('active');
       state.selectedDate = date;
-      clearSelection();
+      invalidateAvailability();
     });
     row.appendChild(button);
   });
@@ -140,7 +154,7 @@ function renderCombos() {
     const item = document.createElement('div');
     item.className = 'combo-item';
     item.innerHTML = `
-      <span><b>میزهای ${combo.displayNumbers.join(' و ')}</b><small>${combo.startTime} تا ${combo.endTime} · ظرفیت ${Number(combo.capacity).toLocaleString('fa-IR')} نفر</small></span>
+      <span><b>میزهای ${escapeHtml(combo.displayNumbers.join(' و '))}</b><small>${escapeHtml(combo.startTime)} تا ${escapeHtml(combo.endTime)} · ظرفیت ${Number(combo.capacity || 0).toLocaleString('fa-IR')} نفر</small></span>
       <button type="button" class="secondary-btn">انتخاب</button>
     `;
     item.querySelector('button').addEventListener('click', () => selectCombo(combo));
@@ -154,7 +168,7 @@ function openReserveModal() {
   const guests = Number(el('guestCount').value);
   const price = state.config.settings.pricePerGuest * guests;
   el('modalSummary').className = 'notice';
-  el('modalSummary').innerHTML = `${state.selectedLabel}<br>تعداد نفرات: ${guests.toLocaleString('fa-IR')}<br>مبلغ: ${toman(price)}`;
+  el('modalSummary').innerHTML = `${escapeHtml(state.selectedLabel)}<br>تعداد نفرات: ${guests.toLocaleString('fa-IR')}<br>مبلغ: ${escapeHtml(toman(price))}`;
   if (state.currentUser) {
     el('customerName').value = state.currentUser.name || '';
     el('customerPhone').value = state.currentUser.phone || '';
@@ -163,6 +177,9 @@ function openReserveModal() {
 }
 
 el('closeModal').addEventListener('click', () => el('reserveModal').classList.remove('open'));
+document.addEventListener("keydown", (event) => {
+	if (event.key === "Escape") el("reserveModal").classList.remove("open");
+});
 el('reserveModal').addEventListener('click', (event) => {
   if (event.target === el('reserveModal')) el('reserveModal').classList.remove('open');
 });
@@ -225,13 +242,15 @@ el('reserveForm').addEventListener('submit', async (event) => {
   const submitButton = event.target.querySelector('button[type="submit"]');
   submitButton.disabled = true;
   try {
+    const startTime = selectedStartTime();
+    if (!startTime) throw new Error('ساعت شروع مشخص نشد؛ دوباره میز رو انتخاب کن.');
     const body = {
       tableIds: state.selectedTableIds,
       date: state.selectedDate,
-      startTime: selectedStartTime(),
+      startTime,
       durationMinutes: state.duration,
       guestCount: Number(el('guestCount').value),
-      customerName: el('customerName').value.trim().slice(0, 80),
+      customerName: el('customerName').value.trim(),
       customerPhone: el('customerPhone').value.trim()
     };
     const { reservation } = await api('/api/reservations/hold', { method: 'POST', body });
@@ -258,7 +277,7 @@ async function init() {
   el('mapLoading').hidden = true;
 
   state.config = await api('/api/config');
-  renderDurationChips('durationRow', () => state.duration, (value) => { state.duration = value; });
+  renderDurationChips('durationRow', () => state.duration, (value) => { state.duration = value; invalidateAvailability(); });
   renderDates();
 
   try {
@@ -270,8 +289,10 @@ async function init() {
 
   try {
     state.availability = await api(`/api/availability?${buildAvailabilityParams()}`);
-  } catch {
+  } catch (error) {
     state.availability = { tables: [], combos: [] };
+    el('searchNotice').className = 'notice warn';
+    el('searchNotice').textContent = `بررسی اولیه‌ی میزها انجام نشد (${error.message}). دکمه‌ی بررسی میزها رو بزن.`;
   }
 
   renderMap();

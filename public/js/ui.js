@@ -28,8 +28,10 @@ export function roofMonogram() {
 }
 
 /** Escapes text before it goes into innerHTML. Every page that injects server/user data into HTML should use this. */
+const HTML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+
 export function escapeHtml(str) {
-  return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  return String(str).replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]);
 }
 
 /** A label/value detail row, used by track.html/invoice.html reservation summaries. */
@@ -39,7 +41,9 @@ export function detailRow(label, value) {
 
 /** Comma-joined table numbers for a reservation, used by invoice.html/payment.html. */
 export function tablesText(reservation) {
-  return reservation.tables.map((rt) => rt.table.displayNumber).join(' و ');
+  const tables = reservation?.tables;
+  if (!Array.isArray(tables) || tables.length === 0) return '—';
+  return tables.map((rt) => rt?.table?.displayNumber ?? '؟').join(' و ');
 }
 
 /**
@@ -48,6 +52,7 @@ export function tablesText(reservation) {
  */
 export function renderDurationChips(containerId, getValue, setValue) {
   const row = document.getElementById(containerId);
+  if (!row) return;
   row.innerHTML = '';
   for (let minutes = 60; minutes <= 240; minutes += 30) {
     const button = document.createElement('button');
@@ -83,10 +88,12 @@ export function mountHoldRing(container, expiresAt, { totalSeconds, onExpire, on
   const progress = container.querySelector('.progress');
   const num = container.querySelector('.hold-ring-num');
 
+  const expiryMs = new Date(expiresAt).getTime();
   let stopped = false;
+  let timerId = null;
   function tick() {
     if (stopped) return;
-    const remainMs = new Date(expiresAt) - Date.now();
+    const remainMs = expiryMs - Date.now();
     if (!Number.isFinite(remainMs)) {
       stopped = true;
       if (onExpire) onExpire();
@@ -105,10 +112,10 @@ export function mountHoldRing(container, expiresAt, { totalSeconds, onExpire, on
       if (onExpire) onExpire();
       return;
     }
-    setTimeout(tick, 250);
+    timerId = setTimeout(tick, 250);
   }
   tick();
-  return { stop: () => { stopped = true; } };
+  return { stop: () => { stopped = true; clearTimeout(timerId); } };
 }
 
 /** Simple bottom-sheet controller for mobile table-detail panels. */

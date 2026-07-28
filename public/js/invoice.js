@@ -1,5 +1,5 @@
 import { api, faDateTime, statusFa, toman } from './api.js';
-import { ICONS, initHeaderScroll, faHours, detailRow as row, tablesText } from './ui.js';
+import { ICONS, initHeaderScroll, escapeHtml, faHours, detailRow as row, tablesText } from './ui.js';
 
 initHeaderScroll();
 
@@ -10,18 +10,19 @@ const PAYMENT_STATUS_FA = { PENDING: 'در انتظار', PAID: 'پرداخت‌
 
 async function init() {
   if (!id) throw new Error('شناسه فاکتور در آدرس پیدا نشد.');
+  box.innerHTML = '<div class="notice">در حال بارگذاری فاکتور…</div>';
   const { reservation } = await api(`/api/reservations/${id}`);
-  const payment = reservation.payments[0] || {};
+  const payment = reservation.payments?.[0] || {};
 
   box.innerHTML = `
     <div class="invoice-head">
       <div>
         <h3 style="margin-bottom:6px">فاکتور رزرو Roof</h3>
-        <span class="invoice-num">کد پیگیری ${reservation.trackingCode}</span>
+        <span class="invoice-num">کد پیگیری ${escapeHtml(reservation.trackingCode)}</span>
       </div>
       <div style="text-align:left">
-        <div class="brand-word" style="font-size:22px">${reservation.invoice?.number || '—'}</div>
-        <span class="status ${reservation.status}" style="margin-top:6px">${statusFa(reservation.status)}</span>
+        <div class="brand-word" style="font-size:22px">${escapeHtml(reservation.invoice?.number || '—')}</div>
+        <span class="status ${escapeHtml(reservation.status)}" style="margin-top:6px">${escapeHtml(statusFa(reservation.status))}</span>
       </div>
     </div>
 
@@ -30,7 +31,7 @@ async function init() {
     ${row('تاریخ و ساعت', faDateTime(reservation.startAt))}
     ${row('مدت رزرو', `${faHours(reservation.durationMinutes)} ساعت`)}
     ${row('میز', tablesText(reservation))}
-    ${row('تعداد نفرات', reservation.guestCount.toLocaleString('fa-IR'))}
+    ${row('تعداد نفرات', Number(reservation.guestCount || 0).toLocaleString('fa-IR'))}
     ${row('قیمت هر نفر', toman(reservation.pricePerGuest))}
     ${row('وضعیت پرداخت', payment.status ? (PAYMENT_STATUS_FA[payment.status] || payment.status) : '—')}
     ${payment.refId ? row('کد پیگیری پرداخت', payment.refId) : ''}
@@ -45,4 +46,7 @@ async function init() {
   document.getElementById('printBtn').addEventListener('click', () => window.print());
 }
 
-init().catch((error) => { box.innerHTML = `<div class="notice danger">${error.message}</div><div class="actions"><a class="secondary-btn" href="/">بازگشت به رزرو</a></div>`; });
+init().catch((error) => {
+  box.innerHTML = `<div class="notice danger"></div><div class="actions"><a class="secondary-btn" href="/">بازگشت به رزرو</a></div>`;
+  box.querySelector('.notice').textContent = error.message;
+});
