@@ -139,28 +139,52 @@ function createSofaModule({ x, y, width, rotation = 0, double = false }) {
   return group;
 }
 
-function createTableBody(table, visual) {
+// سایه و دیواره‌ی کناری باید *شکل‌شون* با میز بچرخه (وگرنه گوشه‌هاشون با
+// میزِ چرخیده هم‌راستا نمی‌مونه - دقیقاً همون مشکلی که تو میزهای غیر ۱۸۰
+// درجه دیده می‌شد)، ولی جهتِ افتادگی‌شون به پایین (که حس ضخامت/سایه رو
+// می‌سازه) باید همیشه مستقیم رو به پایین بمونه، نه با زاویه‌ی میز بچرخه.
+// برای همین هر شکل داخل یه گروه با rotate(زاویه) قرار می‌گیره (تا طرحش با
+// میز هم‌راستا بمونه) و این گروه خودش داخل یه translate ثابت می‌شینه (تا
+// جهت افتادگی همیشه ثابت بمونه، چون translate بعد از rotate اعمال می‌شه).
+function createTableShadowBase(table) {
+  const angle = rounded(table.rotation || 0);
+  const group = svgEl('g', { class: 'roof-table-shadow-layer' });
+  const w = Number(table.width);
+  const h = Number(table.height);
+  const isRound = table.shape === 'ROUND';
+  const radius = table.shape === 'SQUARE' ? 6 : 11;
+
+  const shadowShape = isRound
+    ? svgEl('ellipse', { class: 'table-shadow', cx: 0, cy: 0, rx: w / 2 + 5, ry: h / 2 + 4 })
+    : svgEl('rect', { class: 'table-shadow', x: -w / 2 - 5, y: -h / 2 - 5, width: w + 10, height: h + 10, rx: radius + 4 });
+  const shadowWrap = svgEl('g', { transform: `translate(0 12) rotate(${angle})` });
+  shadowWrap.append(shadowShape);
+
+  const sideShape = isRound
+    ? svgEl('ellipse', { class: 'table-side', cx: 0, cy: 0, rx: w / 2, ry: h / 2 })
+    : svgEl('rect', { class: 'table-side', x: -w / 2, y: -h / 2, width: w, height: h, rx: radius });
+  const sideWrap = svgEl('g', { transform: `translate(0 8) rotate(${angle})` });
+  sideWrap.append(sideShape);
+
+  group.append(shadowWrap, sideWrap);
+  return group;
+}
+
+// این تابع چیزی که واقعاً باید با میز بچرخه رو می‌سازه: سطح میز، های‌لایت
+// روش، و اتصالات مبل - همه با همون rotate(زاویه)ی spin هماهنگ می‌مونن،
+// چون برخلاف سایه/دیواره، این‌ها افتادگی ثابتی ندارن که نیاز به تصحیح داشته باشه.
+function createTableTop(table, visual) {
   const group = svgEl('g', { class: 'roof-table-body' });
   const w = Number(table.width);
   const h = Number(table.height);
   const isRound = table.shape === 'ROUND';
   const radius = table.shape === 'SQUARE' ? 6 : 11;
 
-  if (isRound) {
-    group.append(
-      svgEl('ellipse', { class: 'table-shadow', cx: 0, cy: 12, rx: w / 2 + 5, ry: h / 2 + 4 }),
-      svgEl('ellipse', { class: 'table-side', cx: 0, cy: 8, rx: w / 2, ry: h / 2 }),
-      svgEl('ellipse', { class: 'table-top', cx: 0, cy: 0, rx: w / 2, ry: h / 2 }),
-      svgEl('ellipse', { class: 'table-highlight', cx: -w * .08, cy: -h * .08, rx: w * .31, ry: h * .2 })
-    );
-  } else {
-    group.append(
-      svgEl('rect', { class: 'table-shadow', x: -w / 2 - 5, y: -h / 2 + 8, width: w + 10, height: h + 10, rx: radius + 4 }),
-      svgEl('rect', { class: 'table-side', x: -w / 2, y: -h / 2 + 8, width: w, height: h, rx: radius }),
-      svgEl('rect', { class: 'table-top', x: -w / 2, y: -h / 2, width: w, height: h, rx: radius }),
-      svgEl('path', { class: 'table-highlight', d: `M${-w / 2 + 9} ${-h / 2 + 9}H${w / 2 - 9}` })
-    );
-  }
+  group.append(
+    isRound
+      ? svgEl('ellipse', { class: 'table-top', cx: 0, cy: 0, rx: w / 2, ry: h / 2 })
+      : svgEl('rect', { class: 'table-top', x: -w / 2, y: -h / 2, width: w, height: h, rx: radius })
+  );
 
   if (visual.seatLayout === 'sofa-bottom') {
     group.append(svgEl('rect', { class: 'sofa-capacity', x: -w * .34, y: h / 2 + 8, width: w * .68, height: 8, rx: 4 }));
@@ -168,6 +192,12 @@ function createTableBody(table, visual) {
   if (visual.seatLayout === 'sofa-right') {
     group.append(svgEl('rect', { class: 'sofa-capacity', x: w / 2 + 8, y: -h * .32, width: 8, height: h * .64, rx: 4 }));
   }
+
+  group.append(
+    isRound
+      ? svgEl('ellipse', { class: 'table-highlight', cx: -w * .08, cy: -h * .08, rx: w * .31, ry: h * .2 })
+      : svgEl('path', { class: 'table-highlight', d: `M${-w / 2 + 9} ${-h / 2 + 9}H${w / 2 - 9}` })
+  );
   return group;
 }
 
@@ -446,8 +476,8 @@ export class RoofMap {
       } else {
         chairPositions(table, visual).forEach((position) => spin.append(createChair(position, visual.chairScale || 1)));
       }
-      spin.append(createTableBody(table, visual));
-      lift.append(spin, createTableLabel(table));
+      spin.append(createTableTop(table, visual));
+      lift.append(createTableShadowBase(table), spin, createTableLabel(table));
 
       if (this.mode === 'range' && table.availability?.available && table.availability.startTime) {
         lift.append(createTimeBubble(`از ${table.availability.startTime}`, table));

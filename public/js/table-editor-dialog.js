@@ -75,18 +75,136 @@ export function mountTableEditorDialog({ onSaved, onDeleted, getConnections, get
     return { x: Math.round(viewBox.x + relX * viewBox.width), y: Math.round(viewBox.y + relY * viewBox.height) };
   }
 
-  // چون شکل میز و صندلی‌ها تو یه گروه چرخیده رسم می‌شن، مختصات درگ (که رو
-  // صفحه‌ی صاف حساب می‌شه) باید معکوسِ همون چرخش بشه تا با جایی که واقعاً
-  // زیر انگشت/ماوسه یکی باشه.
-  function unrotatePoint(x, y, angleDeg) {
-    const rad = (-angleDeg * Math.PI) / 180;
-    return {
-      x: Math.round(x * Math.cos(rad) - y * Math.sin(rad)),
-      y: Math.round(x * Math.sin(rad) + y * Math.cos(rad))
-    };
-  }
+function unrotatePoint(x, y, angleDeg) {
+	const rad = (-angleDeg * Math.PI) / 180;
+	return {
+		x: Math.round(x * Math.cos(rad) - y * Math.sin(rad)),
+		y: Math.round(x * Math.sin(rad) + y * Math.cos(rad)),
+	};
+}
 
-  let canvasSvg;
+const ROTATION_DIAL_R = 40;
+
+function normalizeAngle(angle) {
+	return ((angle % 360) + 360) % 360;
+}
+
+// زاویه رو با قرارداد ساعت حساب می‌کنه: صفر درجه = بالا (۱۲ ساعت)، مثبت = جهت عقربه‌ها.
+function angleToPoint(angle, radius) {
+	const rad = (angle * Math.PI) / 180;
+	return { x: 50 + radius * Math.sin(rad), y: 50 - radius * Math.cos(rad) };
+}
+
+function pointToAngle(x, y) {
+	return normalizeAngle((Math.atan2(x - 50, -(y - 50)) * 180) / Math.PI);
+}
+
+function updateRotationDial(dialSvg, angle) {
+	const point = angleToPoint(angle, ROTATION_DIAL_R);
+	dialSvg.querySelector(".rotation-dial-hand").setAttribute("x2", point.x);
+	dialSvg.querySelector(".rotation-dial-hand").setAttribute("y2", point.y);
+	dialSvg.querySelector(".rotation-dial-handle").setAttribute("cx", point.x);
+	dialSvg.querySelector(".rotation-dial-handle").setAttribute("cy", point.y);
+}
+
+function buildRotationDial(onChange) {
+	const dialSvg = svg("svg", {
+		class: "rotation-dial",
+		viewBox: "0 0 100 100",
+	});
+	dialSvg.append(
+		svg("circle", {
+			class: "rotation-dial-track",
+			cx: 50,
+			cy: 50,
+			r: ROTATION_DIAL_R,
+		}),
+	);
+	const ticks = svg("g", { class: "rotation-dial-ticks" });
+	for (let a = 0; a < 360; a += 45) {
+		const inner = angleToPoint(a, ROTATION_DIAL_R - 5);
+		const outer = angleToPoint(a, ROTATION_DIAL_R + 5);
+		ticks.append(
+			svg("line", {
+				x1: inner.x,
+				y1: inner.y,
+				x2: outer.x,
+				y2: outer.y,
+				class: "rotation-dial-tick",
+			}),
+		);
+	}
+	dialSvg.append(
+		ticks,
+		svg("line", {
+			x1: 50,
+			y1: 50,
+			x2: 50,
+			y2: 50 - ROTATION_DIAL_R,
+			class: "rotation-dial-hand",
+		}),
+		svg("circle", {
+			cx: 50,
+			cy: 50 - ROTATION_DIAL_R,
+			r: 7,
+			class: "rotation-dial-handle",
+		}),
+		svg("circle", { cx: 50, cy: 50, r: 3, class: "rotation-dial-center" }),
+	);
+
+	let dragging = false;
+	function setFromClient(clientX, clientY) {
+		const rect = dialSvg.getBoundingClientRect();
+		const x = ((clientX - rect.left) / rect.width) * 100;
+		const y = ((clientY - rect.top) / rect.height) * 100;
+		const angle = Math.round(pointToAngle(x, y));
+		updateRotationDial(dialSvg, angle);
+		onChange(angle);
+	}
+	dialSvg.addEventListener("pointerdown", (event) => {
+		dragging = true;
+		dialSvg.setPointerCapture(event.pointerId);
+		setFromClient(event.clientX, event.clientY);
+	});
+	dialSvg.addEventListener("pointermove", (event) => {
+		if (dragging) setFromClient(event.clientX, event.clientY);
+	});
+	dialSvg.addEventListener("pointerup", () => {
+		dragging = false;
+	});
+	dialSvg.addEventListener("pointercancel", () => {
+		dragging = false;
+	});
+	return dialSvg;
+}
+
+function buildRotationField(currentRotation) {
+	const start = normalizeAngle(currentRotation || 0);
+	const numberInput = el("input", {
+		"data-field": "rotation",
+		type: "number",
+		step: "1",
+		value: start,
+	});
+	const dial = buildRotationDial((angle) => {
+		numberInput.value = angle;
+		renderCanvas();
+	});
+	updateRotationDial(dial, start);
+	numberInput.addEventListener("input", () => {
+		const angle = normalizeAngle(Number(numberInput.value) || 0);
+		updateRotationDial(dial, angle);
+		renderCanvas();
+	});
+	return el(
+		"div",
+		{ class: "field rotation-field" },
+		el("label", {}, "چرخش میز"),
+		el("div", { class: "rotation-field-row" }, dial, numberInput),
+	);
+}
+
+let canvasSvg;
   function renderCanvas() {
     if (!canvasSvg) return;
     canvasSvg.innerHTML = '';
@@ -216,7 +334,7 @@ export function mountTableEditorDialog({ onSaved, onDeleted, getConnections, get
         el('div', { class: 'field' }, el('label', {}, 'حداقل نفر رزرو'), el('input', { 'data-field': 'minGuests', type: 'number', min: '1', value: t.minGuests || 1 })),
         el('div', { class: 'field' }, el('label', {}, 'حداکثر نفر رزرو'), el('input', { 'data-field': 'maxGuests', type: 'number', min: '1', value: t.maxGuests || t.capacity || (chairs.length || 1) }))
       ),
-      el('div', { class: 'field' }, el('label', {}, 'چرخش میز'), el('input', { 'data-field': 'rotation', type: 'number', step: '1', value: t.rotation || 0, oninput: renderCanvas })),
+      buildRotationField(t.rotation),
       el('hr', { class: 'dialog-divider' }),
       el('div', { class: 'chair-editor' },
         el('div', { class: 'chair-canvas-wrap' }, (() => { canvasSvg = svg('svg', { viewBox: '-120 -120 240 240', class: 'chair-mini-canvas' }); return canvasSvg; })()),

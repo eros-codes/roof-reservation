@@ -1700,9 +1700,47 @@ div.chip-row button.chip{
   gap: 10px;
 }
 .primary-btn svg, .secondary-btn svg, .danger-btn svg, .ghost-btn svg { width: 17px; height: 17px; flex: none; }
-/* ==========================================================================
-   Responsive (moved from Responsive section)
-   ========================================================================== */
+
+.rotation-field-row {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+}
+.rotation-dial {
+	width: 84px;
+	height: 84px;
+	flex: none;
+	touch-action: none;
+	cursor: grab;
+}
+.rotation-dial:active {
+	cursor: grabbing;
+}
+.rotation-dial-track {
+	fill: rgba(255, 255, 255, 0.4);
+	stroke: var(--line);
+	stroke-width: 1.5;
+}
+.rotation-dial-tick {
+	stroke: var(--line);
+	stroke-width: 1.5;
+}
+.rotation-dial-hand {
+	stroke: var(--rich-sabel);
+	stroke-width: 2;
+	stroke-linecap: round;
+}
+.rotation-dial-handle {
+	fill: var(--rich-sabel);
+	stroke: var(--chapel-white);
+	stroke-width: 2;
+}
+.rotation-dial-center {
+	fill: var(--deep-taupe);
+}
+.rotation-field input[data-field="rotation"] {
+	max-width: 90px;
+}
 
 @media (max-width: 1023px) {
 	.admin-layout {
