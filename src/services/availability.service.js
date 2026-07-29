@@ -1,81 +1,53 @@
-import { prisma } from "../lib/prisma.js";
-import {
-	addDays,
-	addMinutes,
-	combineDateAndTime,
-	makeTimeSlots,
-	overlapWithBuffer,
-	timeToMinutes,
-} from "../lib/time.js";
-import { getSettings, numberSetting } from "./settings.service.js";
+import { prisma } from '../lib/prisma.js';
+import { addDays, addMinutes, combineDateAndTime, makeTimeSlots, overlapWithBuffer, timeToMinutes } from '../lib/time.js';
+import { getSettings, numberSetting } from './settings.service.js';
 
-const BLOCKING_STATUSES = [
-	"HOLD",
-	"PAYMENT_PENDING",
-	"PAYMENT_REVIEW",
-	"CONFIRMED",
-	"CHANGE_PENDING",
-];
+const BLOCKING_STATUSES = ['HOLD', 'PAYMENT_PENDING', 'PAYMENT_REVIEW', 'CONFIRMED', 'CHANGE_PENDING'];
 
 export async function expireOldHolds(client = prisma) {
 	await client.reservation.updateMany({
 		where: {
-			status: { in: ["HOLD", "PAYMENT_PENDING"] },
+			status: { in: ['HOLD', 'PAYMENT_PENDING'] },
 			holdExpiresAt: { lt: new Date() },
 		},
-		data: { status: "EXPIRED" },
+		data: { status: 'EXPIRED' },
 	});
 }
 
 export async function getPublicConfig() {
 	const settings = await getSettings();
-	const windowDays = numberSetting(settings, "reservationWindowDays", 14);
+	const windowDays = numberSetting(settings, 'reservationWindowDays', 14);
 	const dates = [];
 	const today = new Date();
 	for (let i = 0; i < windowDays; i++) {
 		const d = addDays(today, i);
-		dates.push(d.toISOString().slice(0, 10));
+		const y = d.getFullYear();
+		const m = String(d.getMonth() + 1).padStart(2, '0');
+		const day = String(d.getDate()).padStart(2, '0');
+		dates.push(`${y}-${m}-${day}`);
 	}
 	return {
 		settings: {
 			reservationWindowDays: windowDays,
-			minLeadMinutes: numberSetting(settings, "minLeadMinutes", 120),
-			minDurationMinutes: numberSetting(
-				settings,
-				"minDurationMinutes",
-				60,
-			),
-			maxDurationMinutes: numberSetting(
-				settings,
-				"maxDurationMinutes",
-				240,
-			),
-			slotIntervalMinutes: numberSetting(
-				settings,
-				"slotIntervalMinutes",
-				15,
-			),
-			cleaningBufferMinutes: numberSetting(
-				settings,
-				"cleaningBufferMinutes",
-				15,
-			),
-			holdMinutes: numberSetting(settings, "holdMinutes", 10),
-			pricePerGuest: numberSetting(settings, "pricePerGuest", 100000),
-			currencyLabel: settings.currencyLabel || "تومان",
+			minLeadMinutes: numberSetting(settings, 'minLeadMinutes', 120),
+			minDurationMinutes: numberSetting(settings, 'minDurationMinutes', 60),
+			maxDurationMinutes: numberSetting(settings, 'maxDurationMinutes', 240),
+			slotIntervalMinutes: numberSetting(settings, 'slotIntervalMinutes', 15),
+			cleaningBufferMinutes: numberSetting(settings, 'cleaningBufferMinutes', 15),
+			holdMinutes: numberSetting(settings, 'holdMinutes', 10),
+			pricePerGuest: numberSetting(settings, 'pricePerGuest', 100000),
+			currencyLabel: settings.currencyLabel || 'تومان',
 		},
 		dates,
 	};
 }
 
 export async function getTablesWithConnections(client = prisma) {
-	const tables = await client.cafeTable.findMany({
-		orderBy: [{ zone: "asc" }, { code: "asc" }],
-	});
-	const connections = await client.tableConnection.findMany();
-	const byId = Object.fromEntries(
-		tables.map((t) => [t.id, { ...t, connectableTableIds: [] }]),
-	);
+	const [tables, connections] = await Promise.all([
+		client.cafeTable.findMany({ orderBy: [{ zone: 'asc' }, { code: 'asc' }] }),
+		client.tableConnection.findMany(),
+	]);
+	const byId = Object.fromEntries(tables.map((t) => [t.id, { ...t, connectableTableIds: [] }]));
 	for (const c of connections) {
 		if (byId[c.tableAId] && byId[c.tableBId]) {
 			byId[c.tableAId].connectableTableIds.push(c.tableBId);
@@ -85,63 +57,30 @@ export async function getTablesWithConnections(client = prisma) {
 	return { tables: Object.values(byId), connections };
 }
 
-function reservationBlocksTable(
-	reservation,
-	tableId,
-	startAt,
-	endAt,
-	bufferMinutes,
-) {
-	const isActiveHold =
-		reservation.status === "HOLD" ||
-		reservation.status === "PAYMENT_PENDING";
-	if (
-		isActiveHold &&
-		reservation.holdExpiresAt &&
-		reservation.holdExpiresAt < new Date()
-	)
-		return false;
+function reservationBlocksTable(reservation, tableId, startAt, endAt, bufferMinutes) {
+	const isActiveHold = reservation.status === 'HOLD' || reservation.status === 'PAYMENT_PENDING';
+	if (isActiveHold && reservation.holdExpiresAt && reservation.holdExpiresAt < new Date()) return false;
 	const hasTable = reservation.tables.some((rt) => rt.tableId === tableId);
 	if (!hasTable) return false;
-	return overlapWithBuffer(
-		startAt,
-		endAt,
-		reservation.startAt,
-		reservation.endAt,
-		bufferMinutes,
-	);
+	return overlapWithBuffer(startAt, endAt, reservation.startAt, reservation.endAt, bufferMinutes);
 }
 
 function isTableClosed(table, dayClosures, startTime, endTime) {
-	const relevant = dayClosures.filter(
-		(c) =>
-			(!c.tableId && !c.zone) ||
-			c.tableId === table.id ||
-			c.zone === table.zone,
-	);
+	const relevant = dayClosures.filter((c) => (!c.tableId && !c.zone) || c.tableId === table.id || c.zone === table.zone);
 	if (!relevant.length) return false;
 	const requestedStart = timeToMinutes(startTime);
 	const requestedEnd = timeToMinutes(endTime);
 	return relevant.some((closure) => {
 		if (!closure.startTime || !closure.endTime) return true;
-		return (
-			requestedStart < timeToMinutes(closure.endTime) &&
-			requestedEnd > timeToMinutes(closure.startTime)
-		);
+		return requestedStart < timeToMinutes(closure.endTime) && requestedEnd > timeToMinutes(closure.startTime);
 	});
 }
 
-function validateTimeWindow({
-	date,
-	startTime,
-	durationMinutes,
-	settings,
-	workingHoursByDay,
-}) {
-	const minLeadMinutes = numberSetting(settings, "minLeadMinutes", 120);
-	const windowDays = numberSetting(settings, "reservationWindowDays", 14);
-	const minDuration = numberSetting(settings, "minDurationMinutes", 60);
-	const maxDuration = numberSetting(settings, "maxDurationMinutes", 240);
+function validateTimeWindow({ date, startTime, durationMinutes, settings, workingHoursByDay }) {
+	const minLeadMinutes = numberSetting(settings, 'minLeadMinutes', 120);
+	const windowDays = numberSetting(settings, 'reservationWindowDays', 14);
+	const minDuration = numberSetting(settings, 'minDurationMinutes', 60);
+	const maxDuration = numberSetting(settings, 'maxDurationMinutes', 240);
 	if (durationMinutes < minDuration || durationMinutes > maxDuration) {
 		return {
 			ok: false,
@@ -154,21 +93,19 @@ function validateTimeWindow({
 	if (startAt < addMinutes(now, minLeadMinutes)) {
 		return {
 			ok: false,
-			reason: "رزرو باید حداقل ۲ ساعت قبل از شروع ثبت شود.",
+			reason: `رزرو باید حداقل ${Math.round(minLeadMinutes / 60)} ساعت قبل از شروع ثبت شود.`,
 		};
 	}
 	const maxDate = addDays(new Date(), windowDays);
+	maxDate.setHours(23, 59, 59, 999);
 	if (startAt > maxDate) {
-		return { ok: false, reason: "رزرو فقط تا ۱۴ روز آینده ممکن است." };
+		return { ok: false, reason: `رزرو فقط تا ${windowDays} روز آینده ممکن است.` };
 	}
 	const workingHour = workingHoursByDay[startAt.getDay()];
-	if (!workingHour || workingHour.isClosed)
-		return { ok: false, reason: "کافه در این روز بسته است." };
-	const endTime = `${String(endAt.getHours()).padStart(2, "0")}:${String(endAt.getMinutes()).padStart(2, "0")}`;
-	if (
-		timeToMinutes(startTime) < timeToMinutes(workingHour.opensAt) ||
-		timeToMinutes(endTime) > timeToMinutes(workingHour.closesAt)
-	) {
+	if (!workingHour || workingHour.isClosed) return { ok: false, reason: 'کافه در این روز بسته است.' };
+	const endTime = `${String(endAt.getHours()).padStart(2, '0')}:${String(endAt.getMinutes()).padStart(2, '0')}`;
+	const endMinutesFromStartDay = timeToMinutes(startTime) + durationMinutes;
+	if (timeToMinutes(startTime) < timeToMinutes(workingHour.opensAt) || endMinutesFromStartDay > timeToMinutes(workingHour.closesAt)) {
 		return {
 			ok: false,
 			reason: `بازه باید داخل ساعات کاری ${workingHour.opensAt} تا ${workingHour.closesAt} باشد.`,
@@ -187,14 +124,18 @@ function tableAvailabilityForStart({
 	settings,
 	workingHoursByDay,
 	dayClosures,
+	check: precomputedCheck = null,
+	bufferMinutes: precomputedBuffer = null,
 }) {
-	const check = validateTimeWindow({
-		date,
-		startTime,
-		durationMinutes,
-		settings,
-		workingHoursByDay,
-	});
+	const check =
+		precomputedCheck ||
+		validateTimeWindow({
+			date,
+			startTime,
+			durationMinutes,
+			settings,
+			workingHoursByDay,
+		});
 	if (!check.ok)
 		return {
 			tableId: table.id,
@@ -207,21 +148,21 @@ function tableAvailabilityForStart({
 			tableId: table.id,
 			code: table.code,
 			available: false,
-			reason: "این میز موقتاً غیرفعال است.",
+			reason: 'این میز موقتاً غیرفعال است.',
 		};
 	if (guestCount < table.minGuests)
 		return {
 			tableId: table.id,
 			code: table.code,
 			available: false,
-			reason: "تعداد نفرات برای این میز کم است.",
+			reason: 'تعداد نفرات برای این میز کم است.',
 		};
 	if (guestCount > table.maxGuests)
 		return {
 			tableId: table.id,
 			code: table.code,
 			available: false,
-			reason: "ظرفیت این میز کافی نیست.",
+			reason: 'ظرفیت این میز کافی نیست.',
 		};
 	const closed = isTableClosed(table, dayClosures, startTime, check.endTime);
 	if (closed)
@@ -229,24 +170,18 @@ function tableAvailabilityForStart({
 			tableId: table.id,
 			code: table.code,
 			available: false,
-			reason: "این میز/بخش در این بازه بسته است.",
+			reason: 'این میز/بخش در این بازه بسته است.',
 		};
-	const bufferMinutes = numberSetting(settings, "cleaningBufferMinutes", 15);
+	const bufferMinutes = precomputedBuffer ?? numberSetting(settings, 'cleaningBufferMinutes', 15);
 	const blocked = reservations.some((reservation) =>
-		reservationBlocksTable(
-			reservation,
-			table.id,
-			check.startAt,
-			check.endAt,
-			bufferMinutes,
-		),
+		reservationBlocksTable(reservation, table.id, check.startAt, check.endAt, bufferMinutes),
 	);
 	if (blocked)
 		return {
 			tableId: table.id,
 			code: table.code,
 			available: false,
-			reason: "این میز در این زمان رزرو شده است.",
+			reason: 'این میز در این زمان رزرو شده است.',
 		};
 
 	return {
@@ -254,14 +189,11 @@ function tableAvailabilityForStart({
 		code: table.code,
 		displayNumber: table.displayNumber,
 		available: true,
-		matchType: guestCount === table.capacity ? "perfect" : "soft",
+		matchType: guestCount === table.capacity ? 'perfect' : 'soft',
 		startTime,
 		endTime: check.endTime,
 		maxReservableMinutes: durationMinutes,
-		message:
-			guestCount === table.capacity
-				? "انتخاب ایده‌آل برای تعداد شما"
-				: "ظرفیت میز بیشتر از تعداد نفرات شماست",
+		message: guestCount === table.capacity ? 'انتخاب ایده‌آل برای تعداد شما' : 'ظرفیت میز بیشتر از تعداد نفرات شماست',
 	};
 }
 
@@ -275,6 +207,7 @@ function comboAvailabilityForStart({
 	settings,
 	workingHoursByDay,
 	dayClosures,
+	bufferMinutes: precomputedBuffer = null,
 }) {
 	const [a, b] = tables;
 	const check = validateTimeWindow({
@@ -290,23 +223,25 @@ function comboAvailabilityForStart({
 	const combinedCapacity = a.capacity + b.capacity;
 	const combinedMin = Math.max(a.minGuests, b.minGuests);
 	const largestSingle = Math.max(a.maxGuests, b.maxGuests);
-	if (guestCount <= largestSingle) return null;
 	if (guestCount < combinedMin || guestCount > combinedMax) return null;
+	// ترکیب فقط وقتی پیشنهاد می‌شود که هیچ میز تک‌نفره‌ای برای این بازه مناسب نباشد.
+	const effectiveBuffer = precomputedBuffer ?? numberSetting(settings, 'cleaningBufferMinutes', 15);
+	if (guestCount <= largestSingle) {
+		const singleWorks = [a, b].some(
+			(t) =>
+				t.maxGuests >= guestCount &&
+				t.minGuests <= guestCount &&
+				!reservations.some((r) => reservationBlocksTable(r, t.id, check.startAt, check.endAt, effectiveBuffer)),
+		);
+		if (singleWorks) return null;
+	}
 	const closedA = isTableClosed(a, dayClosures, startTime, check.endTime);
 	const closedB = isTableClosed(b, dayClosures, startTime, check.endTime);
 	if (closedA || closedB) return null;
 
-	const bufferMinutes = numberSetting(settings, "cleaningBufferMinutes", 15);
+	const bufferMinutes = precomputedBuffer ?? numberSetting(settings, 'cleaningBufferMinutes', 15);
 	const blocked = reservations.some((reservation) =>
-		[a.id, b.id].some((tableId) =>
-			reservationBlocksTable(
-				reservation,
-				tableId,
-				check.startAt,
-				check.endAt,
-				bufferMinutes,
-			),
-		),
+		[a.id, b.id].some((tableId) => reservationBlocksTable(reservation, tableId, check.startAt, check.endAt, bufferMinutes)),
 	);
 	if (blocked) return null;
 
@@ -316,8 +251,7 @@ function comboAvailabilityForStart({
 		codes: [a.code, b.code],
 		displayNumbers: [a.displayNumber, b.displayNumber],
 		available: true,
-		matchType:
-			guestCount === combinedCapacity ? "perfect-combo" : "soft-combo",
+		matchType: guestCount === combinedCapacity ? 'perfect-combo' : 'soft-combo',
 		startTime,
 		endTime: check.endTime,
 		capacity: combinedCapacity,
@@ -325,24 +259,12 @@ function comboAvailabilityForStart({
 	};
 }
 
-export async function getAvailability(
-	{
-		date,
-		guestCount,
-		durationMinutes,
-		startTime,
-		rangeStart,
-		rangeEnd,
-	},
-	client = prisma,
-) {
-	await expireOldHolds(client);
+export async function getAvailability({ date, guestCount, durationMinutes, startTime, rangeStart, rangeEnd }, client = prisma) {
+	if (client === prisma) await expireOldHolds(client);
 	const settings = await getSettings();
-	const interval = numberSetting(settings, "slotIntervalMinutes", 15);
-	const { tables, connections: connectionRows } = await getTablesWithConnections(
-		client,
-	);
-	const dayStart = combineDateAndTime(date, "00:00");
+	const interval = numberSetting(settings, 'slotIntervalMinutes', 15, { min: 1 });
+	const { tables, connections: connectionRows } = await getTablesWithConnections(client);
+	const dayStart = combineDateAndTime(date, '00:00');
 	const dayEnd = addMinutes(dayStart, 24 * 60);
 	const [reservations, workingHours, dayClosures] = await Promise.all([
 		client.reservation.findMany({
@@ -356,23 +278,31 @@ export async function getAvailability(
 		client.workingHour.findMany(),
 		client.closure.findMany({ where: { date: dayStart } }),
 	]);
-	const workingHoursByDay = Object.fromEntries(
-		workingHours.map((w) => [w.dayOfWeek, w]),
-	);
+	const workingHoursByDay = Object.fromEntries(workingHours.map((w) => [w.dayOfWeek, w]));
 
 	let starts = [];
 	if (startTime) {
 		starts = [startTime];
 	} else if (rangeStart && rangeEnd) {
 		const possible = makeTimeSlots(rangeStart, rangeEnd, interval);
-		starts = possible.filter(
-			(slot) =>
-				timeToMinutes(slot) + durationMinutes <=
-				timeToMinutes(rangeEnd),
-		);
+		starts = possible.filter((slot) => timeToMinutes(slot) + durationMinutes <= timeToMinutes(rangeEnd));
 	} else {
-		throw new Error("زمان شروع یا بازه زمانی لازم است.");
+		throw new Error('زمان شروع یا بازه زمانی لازم است.');
 	}
+
+	const bufferMinutes = numberSetting(settings, 'cleaningBufferMinutes', 15);
+	const slotChecks = new Map(
+		starts.map((slot) => [
+			slot,
+			validateTimeWindow({
+				date,
+				startTime: slot,
+				durationMinutes,
+				settings,
+				workingHoursByDay,
+			}),
+		]),
+	);
 
 	const tableResults = [];
 	for (const table of tables) {
@@ -388,6 +318,8 @@ export async function getAvailability(
 				settings,
 				workingHoursByDay,
 				dayClosures,
+				check: slotChecks.get(slot),
+				bufferMinutes,
 			});
 			if (result.available) {
 				best = result;
@@ -415,6 +347,7 @@ export async function getAvailability(
 				settings,
 				workingHoursByDay,
 				dayClosures,
+				bufferMinutes,
 			});
 			if (combo) {
 				combos.push(combo);
@@ -423,17 +356,10 @@ export async function getAvailability(
 		}
 	}
 
-	const hasPerfect = tableResults.some(
-		(t) =>
-			t.availability?.available && t.availability.matchType === "perfect",
-	);
-	const hasSoft = tableResults.some(
-		(t) => t.availability?.available && t.availability.matchType === "soft",
-	);
+	const hasPerfect = tableResults.some((t) => t.availability?.available && t.availability.matchType === 'perfect');
+	const hasSoft = tableResults.some((t) => t.availability?.available && t.availability.matchType === 'soft');
 	const exactMissingMessage =
-		!hasPerfect && hasSoft
-			? "میز دقیق برای تعداد شما موجود نیست؛ نزدیک‌ترین میزهای قابل رزرو با سبز کمرنگ نمایش داده شده‌اند."
-			: null;
+		!hasPerfect && hasSoft ? 'میز دقیق برای تعداد شما موجود نیست؛ نزدیک‌ترین میزهای قابل رزرو با سبز کمرنگ نمایش داده شده‌اند.' : null;
 
 	return {
 		date,
@@ -445,16 +371,7 @@ export async function getAvailability(
 	};
 }
 
-export async function assertTablesAvailable(
-	{
-		tableIds,
-		date,
-		startTime,
-		durationMinutes,
-		guestCount,
-	},
-	client = prisma,
-) {
+export async function assertTablesAvailable({ tableIds, date, startTime, durationMinutes, guestCount }, client = prisma) {
 	const availability = await getAvailability(
 		{
 			date,
@@ -466,18 +383,11 @@ export async function assertTablesAvailable(
 	);
 	if (tableIds.length === 1) {
 		const table = availability.tables.find((t) => t.id === tableIds[0]);
-		if (!table?.availability?.available)
-			throw new Error(
-				table?.availability?.reason ||
-					"میز در این زمان قابل رزرو نیست.",
-			);
+		if (!table?.availability?.available) throw new Error(table?.availability?.reason || 'میز در این زمان قابل رزرو نیست.');
 	} else if (tableIds.length === 2) {
-		const combo = availability.combos.find((c) =>
-			tableIds.every((id) => c.tableIds.includes(id)),
-		);
-		if (!combo)
-			throw new Error("این ترکیب میز در این زمان قابل رزرو نیست.");
+		const combo = availability.combos.find((c) => tableIds.every((id) => c.tableIds.includes(id)));
+		if (!combo) throw new Error('این ترکیب میز در این زمان قابل رزرو نیست.');
 	} else {
-		throw new Error("حداکثر ترکیب دو میز مجاز است.");
+		throw new Error('حداکثر ترکیب دو میز مجاز است.');
 	}
 }

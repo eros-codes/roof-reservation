@@ -2,7 +2,7 @@ import { api } from './api.js';
 import { escapeHtml } from './ui.js';
 
 export function mountOtpWidget(container, { purpose, extraFields = [], submitLabel = 'تایید', onVerified }) {
-  container.innerHTML = `
+	container.innerHTML = `
     <div class="form-grid otp-widget">
       ${extraFields.map((f) => `<div class="field"><label>${escapeHtml(f.label)}${f.required ? ' *' : ''}</label><input data-otp-extra="${escapeHtml(f.key)}" placeholder="${escapeHtml(f.placeholder || '')}"></div>`).join('')}
       <div class="field"><label>شماره موبایل</label><input data-otp-phone placeholder="09..." inputmode="tel"></div>
@@ -13,65 +13,74 @@ export function mountOtpWidget(container, { purpose, extraFields = [], submitLab
     </div>
   `;
 
-  const q = (selector) => container.querySelector(selector);
-  const notice = q('[data-otp-notice]');
+	const q = (selector) => container.querySelector(selector);
+	const notice = q('[data-otp-notice]');
 
-  function showNotice(message, type = '') {
-    notice.className = type ? `notice ${type}` : '';
-    notice.textContent = message;
-  }
+	function showNotice(message, type = '') {
+		notice.className = type ? `notice ${type}` : '';
+		notice.textContent = message;
+	}
 
-  function extraPayload() {
-    return Object.fromEntries(extraFields.map((f) => [f.key, q(`[data-otp-extra="${f.key}"]`).value.trim()]));
-  }
+	function extraPayload() {
+		return Object.fromEntries(extraFields.map((f) => [f.key, q(`[data-otp-extra="${f.key}"]`).value.trim()]));
+	}
 
-  q('[data-otp-send]').addEventListener('click', async () => {
-    const phone = q('[data-otp-phone]').value.trim();
-    if (!phone) { showNotice('شماره موبایل رو وارد کن.', 'danger'); return; }
-    const missingField = extraFields.find((f) => f.required && !q(`[data-otp-extra="${f.key}"]`).value.trim());
-    if (missingField) { showNotice(`${missingField.label} رو وارد کن.`, 'danger'); return; }
-    const btn = q('[data-otp-send]');
-    btn.disabled = true;
-    try {
-      await api('/api/otp/send', { method: 'POST', body: { phone, purpose } });
-      showNotice('کد ارسال شد', 'ok');
-      q('[data-otp-code-field]').hidden = false;
-      q('[data-otp-verify]').hidden = false;
-      q('[data-otp-code]').focus();
-      let remaining = 60;
-      const label = btn.textContent;
-      const countdown = setInterval(() => {
-        remaining -= 1;
-        if (remaining <= 0) {
-          clearInterval(countdown);
-          btn.disabled = false;
-          btn.textContent = label;
-          return;
-        }
-        btn.textContent = `ارسال مجدد (${remaining.toLocaleString('fa-IR')})`;
-      }, 1000);
-      return;
-    } catch (error) {
-      showNotice(error.message, 'danger');
-    } finally {
-      if (!btn.textContent.startsWith('ارسال مجدد')) btn.disabled = false;
-    }
-  });
+	q('[data-otp-send]').addEventListener('click', async () => {
+		const phone = q('[data-otp-phone]').value.trim();
+		if (!phone) {
+			showNotice('شماره موبایل رو وارد کن.', 'danger');
+			return;
+		}
+		const missingField = extraFields.find((f) => f.required && !q(`[data-otp-extra="${f.key}"]`).value.trim());
+		if (missingField) {
+			showNotice(`${missingField.label} رو وارد کن.`, 'danger');
+			return;
+		}
+		const btn = q('[data-otp-send]');
+		btn.disabled = true;
+		try {
+			await api('/api/otp/send', { method: 'POST', body: { phone, purpose } });
+			showNotice('کد ارسال شد', 'ok');
+			q('[data-otp-code-field]').hidden = false;
+			q('[data-otp-verify]').hidden = false;
+			q('[data-otp-code]').focus();
+			let remaining = 60;
+			const label = btn.textContent;
+			const countdown = setInterval(() => {
+				remaining -= 1;
+				if (remaining <= 0) {
+					clearInterval(countdown);
+					btn.disabled = false;
+					btn.textContent = label;
+					return;
+				}
+				btn.textContent = `ارسال مجدد (${remaining.toLocaleString('fa-IR')})`;
+			}, 1000);
+			return;
+		} catch (error) {
+			showNotice(error.message, 'danger');
+		} finally {
+			if (!btn.textContent.startsWith('ارسال مجدد')) btn.disabled = false;
+		}
+	});
 
-  q('[data-otp-verify]').addEventListener('click', async () => {
-    const phone = q('[data-otp-phone]').value.trim();
-    const code = q('[data-otp-code]').value.trim();
-    if (!code) { showNotice('کد تایید رو وارد کن.', 'danger'); return; }
-    const btn = q('[data-otp-verify]');
-    btn.disabled = true;
-    try {
-      const data = await api('/api/otp/verify', { method: 'POST', body: { phone, code, purpose, ...extraPayload() } });
-      showNotice('تایید شد.', 'ok');
-      onVerified?.(data);
-    } catch (error) {
-      showNotice(error.message, 'danger');
-    } finally {
-      btn.disabled = false;
-    }
-  });
+	q('[data-otp-verify]').addEventListener('click', async () => {
+		const phone = q('[data-otp-phone]').value.trim();
+		const code = q('[data-otp-code]').value.trim();
+		if (!code) {
+			showNotice('کد تایید رو وارد کن.', 'danger');
+			return;
+		}
+		const btn = q('[data-otp-verify]');
+		btn.disabled = true;
+		try {
+			const data = await api('/api/otp/verify', { method: 'POST', body: { phone, code, purpose, ...extraPayload() } });
+			showNotice('تایید شد.', 'ok');
+			onVerified?.(data);
+		} catch (error) {
+			showNotice(error.message, 'danger');
+		} finally {
+			btn.disabled = false;
+		}
+	});
 }

@@ -1,7 +1,5 @@
 /* admin-login.html — صفحه‌ی ورود ادمین — استایل اختصاصی همین صفحه. هیچ فایل دیگری این کلاس‌ها را تعریف نمی‌کند. */
 
-
-
 /* ===== منتقل‌شده از shared.css / map.css (فقط قوانینی که این صفحه واقعاً استفاده می‌کند) ===== */
 
 .brand-mark {
@@ -92,8 +90,8 @@ input {
 	border-radius: var(--r-xs);
 	padding: 12px 13px;
 	transition:
-	border-color var(--dur) var(--ease),
-	background var(--dur) var(--ease);
+		border-color var(--dur) var(--ease),
+		background var(--dur) var(--ease);
 }
 
 input::placeholder {
@@ -124,8 +122,8 @@ div.clock-range div.field {
 	position: relative;
 	overflow: hidden;
 	transition:
-	transform 0.22s ease,
-	box-shadow 0.22s ease;
+		transform 0.22s ease,
+		box-shadow 0.22s ease;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -133,15 +131,10 @@ div.clock-range div.field {
 }
 
 .primary-btn::before {
-	content: "";
+	content: '';
 	position: absolute;
 	inset: 0;
-	background: linear-gradient(
-	105deg,
-	transparent 30%,
-	rgba(255, 255, 255, 0.3) 50%,
-	transparent 70%
-	);
+	background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.3) 50%, transparent 70%);
 	transform: translateX(150%);
 }
 
@@ -228,7 +221,7 @@ div.clock-range div.field {
 		transform: translateX(-150%);
 	}
 }
-section.card-pad a.login{
+section.card-pad a.login {
 	background-color: transparent !important;
 	color: var(--rich-sabel) !important;
 	font-weight: 700 !important;

@@ -1,16 +1,15 @@
 /* global.css — پایه‌ی مشترک همه‌ی صفحات: روت وریبل‌ها، فونت، ریست. باید تو همه‌ی HTMLها اول از همه لینک بشه. */
 
-@import url("https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&family=Baloo+Bhaijaan+2:wght@400..800&display=swap");
-
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&family=Baloo+Bhaijaan+2:wght@400..800&display=swap');
 
 :root {
 	--chapel-white: #ffff;
 	--antique-veil: #c5bcad;
 	--deep-taupe: #503d22;
 	--rich-sabel: #3b3229;
-	--burnt-oak: #8C7864;
-	--bgc: linear-gradient(180deg, #564c34 0%, #E6DAC8 30%, #CBB9A4 80%);
-		--journey-1: var(--burnt-oak);
+	--burnt-oak: #8c7864;
+	--bgc: linear-gradient(180deg, #564c34 0%, #e6dac8 30%, #cbb9a4 80%);
+	--journey-1: var(--burnt-oak);
 	--journey-2: var(--rich-sabel);
 	--journey-3: var(--deep-taupe);
 	--journey-4: var(--antique-veil);
@@ -36,8 +35,8 @@
 	--ease: cubic-bezier(0.4, 0, 0.2, 1);
 	--dur: 300ms;
 
-	--font-fa: "Baloo Bhaijaan 2", Tahoma, sans-serif;
-	--font-serif: "Lora", serif;
+	--font-fa: 'Baloo Bhaijaan 2', Tahoma, sans-serif;
+	--font-serif: 'Lora', serif;
 	--fs-page-title: clamp(24px, 3vw, 36px);
 }
 
@@ -69,7 +68,7 @@ a {
 	text-decoration: none;
 	opacity: 0.9 !important;
 }
-a.brand{
+a.brand {
 	background-color: transparent !important;
 }
 button,
@@ -90,7 +89,6 @@ h4,
 p {
 	margin: 0;
 	font-family: var(--font-fa) !important;
-
 }
 table {
 	border-collapse: collapse;
@@ -103,7 +101,6 @@ table {
 	outline: 1.5px solid var(--rich-sabel);
 	outline-offset: 3px;
 }
-
 
 /* ==========================================================================
    Reduced motion (moved from Responsive)

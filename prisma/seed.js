@@ -19,14 +19,16 @@ const settings = [
 ];
 
 async function main() {
+  // update خالی: اگر رکورد از قبل هست، دست نمی‌خورد. seed فقط مقدار اولیه می‌سازد،
+  // نه اینکه تنظیمات واقعی را با اجرای دوباره پاک کند.
   for (const [key, value] of settings) {
-    await prisma.setting.upsert({ where: { key }, update: { value }, create: { key, value } });
+    await prisma.setting.upsert({ where: { key }, update: {}, create: { key, value } });
   }
 
   for (let day = 0; day <= 6; day++) {
     await prisma.workingHour.upsert({
       where: { dayOfWeek: day },
-      update: { opensAt: '09:00', closesAt: '21:00', isClosed: false },
+      update: {},
       create: { dayOfWeek: day, opensAt: '09:00', closesAt: '21:00', isClosed: false }
     });
   }
@@ -36,11 +38,14 @@ async function main() {
   const name = process.env.SEED_ADMIN_NAME || 'Roof Owner';
   const passwordHash = await bcrypt.hash(password, 10);
 
-  await prisma.adminUser.upsert({
-    where: { email },
-    update: { name, passwordHash, role: 'OWNER', isActive: true },
-    create: { email, name, passwordHash, role: 'OWNER', isActive: true }
-  });
+  const existingAdmin = await prisma.adminUser.findUnique({ where: { email } });
+  if (existingAdmin) {
+    console.log(`Admin «${email}» از قبل وجود دارد؛ رمز و نقشش دست‌نخورده باقی ماند.`);
+  } else {
+    await prisma.adminUser.create({
+      data: { email, name, passwordHash, role: 'OWNER', isActive: true }
+    });
+  }
 
   // --------------------------------------------------------------------
   // میزها: نسخه‌ی اول برگرفته از نقشه‌ی واقعی کافه (Cafe-plan + عکس‌ها).
@@ -81,7 +86,10 @@ async function main() {
   }
 
   console.log('Seed completed.');
-  console.log(`Admin: ${email} / ${password}`);
+  console.log(`Admin: ${email}`);
+  if (!process.env.SEED_ADMIN_PASSWORD) {
+    console.warn('⚠️  رمز پیش‌فرض استفاده شد. حتماً SEED_ADMIN_PASSWORD را تنظیم کن و رمز را عوض کن.');
+  }
 }
 
 main()

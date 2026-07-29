@@ -8,9 +8,9 @@ import { mountTableEditorDialog } from './table-editor-dialog.js';
  * ذخیره می‌شه، بدون نیاز به تایید یا دکمه‌ی جدا.
  */
 export async function mountAdminMapEditor({ container, tables = [], connections = [], canEdit = true, onReload }) {
-  if (!container) throw new Error('محل ویرایشگر نقشه پیدا نشد.');
+	if (!container) throw new Error('محل ویرایشگر نقشه پیدا نشد.');
 
-  container.innerHTML = `
+	container.innerHTML = `
     <section class="admin-map-canvas">
       <div class="map-zone-tabs" data-editor-zone-tabs></div>
       <div class="map-wrap admin-map-wrap" data-editor-map-wrap>
@@ -27,71 +27,76 @@ export async function mountAdminMapEditor({ container, tables = [], connections 
     </section>
   `;
 
-  const query = (selector) => container.querySelector(selector);
-  const notice = query('[data-editor-notice]');
-  let currentTables = [...tables];
-  let currentConnections = [...connections];
+	const query = (selector) => container.querySelector(selector);
+	const notice = query('[data-editor-notice]');
+	let currentTables = [...tables];
+	let currentConnections = [...connections];
 
-  let noticeTimer = null;
-  function showNotice(message, type = '') {
-    clearTimeout(noticeTimer);
-    notice.className = type ? `notice ${type}` : 'notice';
-    notice.textContent = message;
-    if (type !== 'danger') {
-      noticeTimer = setTimeout(() => { notice.className = ''; notice.textContent = ''; }, 2200);
-    }
-  }
+	let noticeTimer = null;
+	function showNotice(message, type = '') {
+		clearTimeout(noticeTimer);
+		notice.className = type ? `notice ${type}` : 'notice';
+		notice.textContent = message;
+		if (type !== 'danger') {
+			noticeTimer = setTimeout(() => {
+				notice.className = '';
+				notice.textContent = '';
+			}, 2200);
+		}
+	}
 
-  const dialog = mountTableEditorDialog({
-    getAllTables: () => currentTables,
-    getConnections: () => currentConnections,
-    onSaved: (tableId) => onReload?.({ keepSelectedId: tableId ?? null }),
-    onDeleted: () => onReload?.({ keepSelectedId: null })
-  });
+	const dialog = mountTableEditorDialog({
+		getAllTables: () => currentTables,
+		getConnections: () => currentConnections,
+		onSaved: (tableId) => onReload?.({ keepSelectedId: tableId ?? null }),
+		onDeleted: () => onReload?.({ keepSelectedId: null }),
+	});
 
-  const map = new RoofMap({
-    svg: query('[data-editor-map]'),
-    wrap: query('[data-editor-map-wrap]'),
-    zoneTabs: query('[data-editor-zone-tabs]'),
-    editable: canEdit,
-    onTableClick: (table) => { if (canEdit) dialog.openEdit(table); },
-    onTableMove: async (table, { live } = {}) => {
-      if (live || !canEdit) return;
-      try {
-        await api(`/api/admin/tables/${table.id}`, { method: 'PATCH', body: { x: table.x, y: table.y } });
-        showNotice('جای میز ذخیره شد.', 'ok');
-      } catch (error) {
-        showNotice(error.message, 'danger');
-        await onReload?.({ keepSelectedId: null });
-      }
-    }
-  });
+	const map = new RoofMap({
+		svg: query('[data-editor-map]'),
+		wrap: query('[data-editor-map-wrap]'),
+		zoneTabs: query('[data-editor-zone-tabs]'),
+		editable: canEdit,
+		onTableClick: (table) => {
+			if (canEdit) dialog.openEdit(table);
+		},
+		onTableMove: async (table, { live } = {}) => {
+			if (live || !canEdit) return;
+			try {
+				await api(`/api/admin/tables/${table.id}`, { method: 'PATCH', body: { x: table.x, y: table.y } });
+				showNotice('جای میز ذخیره شد.', 'ok');
+			} catch (error) {
+				showNotice(error.message, 'danger');
+				await onReload?.({ keepSelectedId: null });
+			}
+		},
+	});
 
-  try {
-    await map.init();
-  } catch (error) {
-    const loading = query('[data-editor-loading]');
-    loading.innerHTML = '<span></span><b></b>';
-    loading.querySelector('b').textContent = `بارگذاری نقشه با خطا مواجه شد: ${error.message}`;
-    throw error;
-  }
-  query('[data-editor-loading]').hidden = true;
+	try {
+		await map.init();
+	} catch (error) {
+		const loading = query('[data-editor-loading]');
+		loading.innerHTML = '<span></span><b></b>';
+		loading.querySelector('b').textContent = `بارگذاری نقشه با خطا مواجه شد: ${error.message}`;
+		throw error;
+	}
+	query('[data-editor-loading]').hidden = true;
 
-  function update(nextTables, nextConnections, options = {}) {
-    currentTables = [...nextTables];
-    currentConnections = [...nextConnections];
-    map.setTables(currentTables, { selectedTableIds: options.keepSelectedId ? [options.keepSelectedId] : [] });
-  }
+	function update(nextTables, nextConnections, options = {}) {
+		currentTables = [...nextTables];
+		currentConnections = [...nextConnections];
+		map.setTables(currentTables, { selectedTableIds: options.keepSelectedId ? [options.keepSelectedId] : [] });
+	}
 
-  update(currentTables, currentConnections);
+	update(currentTables, currentConnections);
 
-  return {
-    update,
-    selectTable: (tableId) => {
-      const table = currentTables.find((item) => item.id === tableId);
-      if (table && canEdit) dialog.openEdit(table);
-    },
-    openCreateDialog: (zone) => canEdit && dialog.openCreate(zone),
-    focusZone: (zone) => map.focusZone(zone)
-  };
+	return {
+		update,
+		selectTable: (tableId) => {
+			const table = currentTables.find((item) => item.id === tableId);
+			if (table && canEdit) dialog.openEdit(table);
+		},
+		openCreateDialog: (zone) => canEdit && dialog.openCreate(zone),
+		focusZone: (zone) => map.focusZone(zone),
+	};
 }

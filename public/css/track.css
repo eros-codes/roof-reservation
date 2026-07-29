@@ -1,7 +1,5 @@
 /* track.html — پیگیری رزرو مهمان — استایل اختصاصی همین صفحه. هیچ فایل دیگری این کلاس‌ها را تعریف نمی‌کند. */
 
-
-
 /* ===== منتقل‌شده از shared.css / map.css (فقط قوانینی که این صفحه واقعاً استفاده می‌کند) ===== */
 
 .topbar {
@@ -15,10 +13,10 @@
 	background: transparent;
 	box-shadow: none;
 	transition:
-	background 0.4s var(--ease),
-	padding 0.4s var(--ease),
-	box-shadow 0.4s var(--ease),
-	backdrop-filter 0.4s var(--ease);
+		background 0.4s var(--ease),
+		padding 0.4s var(--ease),
+		box-shadow 0.4s var(--ease),
+		backdrop-filter 0.4s var(--ease);
 }
 
 .topbar.is-scrolled {
@@ -28,8 +26,8 @@
 	backdrop-filter: blur(14px);
 	-webkit-backdrop-filter: blur(14px);
 	box-shadow:
-	0 1px 0 var(--line),
-	var(--shadow);
+		0 1px 0 var(--line),
+		var(--shadow);
 }
 
 .brand {
@@ -98,7 +96,7 @@
 }
 
 .nav a::after {
-	content: "";
+	content: '';
 	position: absolute;
 	bottom: -5px;
 	right: 0;
@@ -215,8 +213,8 @@ input {
 	border-radius: var(--r-xs);
 	padding: 12px 13px;
 	transition:
-	border-color var(--dur) var(--ease),
-	background var(--dur) var(--ease);
+		border-color var(--dur) var(--ease),
+		background var(--dur) var(--ease);
 }
 
 input::placeholder {
@@ -293,8 +291,8 @@ div.clock-range div.field {
 	position: relative;
 	overflow: hidden;
 	transition:
-	transform 0.22s ease,
-	box-shadow 0.22s ease;
+		transform 0.22s ease,
+		box-shadow 0.22s ease;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -302,15 +300,10 @@ div.clock-range div.field {
 }
 
 .primary-btn::before {
-	content: "";
+	content: '';
 	position: absolute;
 	inset: 0;
-	background: linear-gradient(
-	105deg,
-	transparent 30%,
-	rgba(255, 255, 255, 0.3) 50%,
-	transparent 70%
-	);
+	background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.3) 50%, transparent 70%);
 	transform: translateX(150%);
 }
 
@@ -462,8 +455,8 @@ div.clock-range div.field {
 	stroke-width: 4;
 	stroke-linecap: round;
 	transition:
-	stroke-dashoffset 1s linear,
-	stroke 0.4s ease;
+		stroke-dashoffset 1s linear,
+		stroke 0.4s ease;
 }
 
 .hold-ring.warn .progress {

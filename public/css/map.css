@@ -67,16 +67,14 @@
    same transform instead of fighting an SVG transform attribute. */
 .map-table {
 	cursor: pointer;
-	transform: translate(calc(var(--tx, 0) * 1px), calc(var(--ty, 0) * 1px))
-		rotate(var(--rot, 0deg));
+	transform: translate(calc(var(--tx, 0) * 1px), calc(var(--ty, 0) * 1px)) rotate(var(--rot, 0deg));
 	transition:
 		transform 0.3s var(--ease),
 		filter 0.3s var(--ease);
 	filter: drop-shadow(0 6px 10px rgba(11, 15, 30, 0.1));
 }
 .map-table:hover:not(.disabled) {
-	transform: translate(calc(var(--tx, 0) * 1px), calc(var(--ty, 0) * 1px))
-		rotate(var(--rot, 0deg)) translateY(-6px);
+	transform: translate(calc(var(--tx, 0) * 1px), calc(var(--ty, 0) * 1px)) rotate(var(--rot, 0deg)) translateY(-6px);
 	filter: drop-shadow(0 16px 20px rgba(11, 15, 30, 0.18));
 }
 .map-table.disabled {
@@ -179,7 +177,6 @@
 	}
 }
 
-
 /* Real Roof floor map — SVG 2.5D layer ======================================= */
 
 [hidden] {
@@ -257,7 +254,7 @@
 	display: block;
 	user-select: none;
 	-webkit-user-select: none;
-  background: #e8e1d8;
+	background: #e8e1d8;
 }
 .roof-floor-map.is-panning {
 	cursor: grabbing;
@@ -271,11 +268,7 @@
 	place-content: center;
 	justify-items: center;
 	gap: 10px;
-	background: linear-gradient(
-		135deg,
-		rgba(239, 234, 228, 0.96),
-		rgba(197, 188, 173, 0.92)
-	);
+	background: linear-gradient(135deg, rgba(239, 234, 228, 0.96), rgba(197, 188, 173, 0.92));
 	color: var(--rich-sabel);
 }
 .map-loading span {
@@ -375,7 +368,7 @@
 }
 
 .roof-table-lift {
-  scale: 0.6;
+	scale: 0.6;
 	transform-origin: center;
 	transform-box: fill-box;
 	transition:

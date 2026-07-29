@@ -6,15 +6,22 @@ initHeaderScroll();
 const id = new URLSearchParams(location.search).get('id');
 const box = document.getElementById('invoiceBox');
 
-const PAYMENT_STATUS_FA = { PENDING: 'در انتظار', PAID: 'پرداخت‌شده', FAILED: 'ناموفق', REVIEW: 'در حال بررسی', REFUND_PENDING: 'در انتظار بازگشت وجه', REFUNDED: 'بازگشت داده شده' };
+const PAYMENT_STATUS_FA = {
+	PENDING: 'در انتظار',
+	PAID: 'پرداخت‌شده',
+	FAILED: 'ناموفق',
+	REVIEW: 'در حال بررسی',
+	REFUND_PENDING: 'در انتظار بازگشت وجه',
+	REFUNDED: 'بازگشت داده شده',
+};
 
 async function init() {
-  if (!id) throw new Error('شناسه فاکتور در آدرس پیدا نشد.');
-  box.innerHTML = '<div class="notice">در حال بارگذاری فاکتور…</div>';
-  const { reservation } = await api(`/api/reservations/${id}`);
-  const payment = reservation.payments?.[0] || {};
+	if (!id) throw new Error('شناسه فاکتور در آدرس پیدا نشد.');
+	box.innerHTML = '<div class="notice">در حال بارگذاری فاکتور…</div>';
+	const { reservation } = await api(`/api/reservations/${id}`);
+	const payment = reservation.payments?.[0] || {};
 
-  box.innerHTML = `
+	box.innerHTML = `
     <div class="invoice-head">
       <div>
         <h3 style="margin-bottom:6px">فاکتور رزرو Roof</h3>
@@ -33,7 +40,7 @@ async function init() {
     ${row('میز', tablesText(reservation))}
     ${row('تعداد نفرات', Number(reservation.guestCount || 0).toLocaleString('fa-IR'))}
     ${row('قیمت هر نفر', toman(reservation.pricePerGuest))}
-    ${row('وضعیت پرداخت', payment.status ? (PAYMENT_STATUS_FA[payment.status] || payment.status) : '—')}
+    ${row('وضعیت پرداخت', payment.status ? PAYMENT_STATUS_FA[payment.status] || payment.status : '—')}
     ${payment.refId ? row('کد پیگیری پرداخت', payment.refId) : ''}
 
     <div class="amount-row"><span>مبلغ کل</span><strong>${toman(reservation.totalAmount)}</strong></div>
@@ -43,10 +50,10 @@ async function init() {
       <a class="secondary-btn" href="/profile.html">پروفایل من</a>
     </div>
   `;
-  document.getElementById('printBtn').addEventListener('click', () => window.print());
+	document.getElementById('printBtn').addEventListener('click', () => window.print());
 }
 
 init().catch((error) => {
-  box.innerHTML = `<div class="notice danger"></div><div class="actions"><a class="secondary-btn" href="/">بازگشت به رزرو</a></div>`;
-  box.querySelector('.notice').textContent = error.message;
+	box.innerHTML = `<div class="notice danger"></div><div class="actions"><a class="secondary-btn" href="/">بازگشت به رزرو</a></div>`;
+	box.querySelector('.notice').textContent = error.message;
 });

@@ -81,9 +81,11 @@ enum SmsType {
 }
 
 model User {
-  id           String        @id @default(cuid())
-  phone        String        @unique
-  name         String?
+  id            String        @id @default(cuid())
+  phone         String        @unique
+  name          String?
+  isActive      Boolean       @default(true)
+  tokenVersion  Int           @default(0)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   reservations Reservation[]

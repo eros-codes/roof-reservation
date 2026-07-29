@@ -1,12 +1,8 @@
-import { prisma } from "../lib/prisma.js";
-import {
-	addMinutes,
-	combineDateAndTime,
-	generateInvoiceNumber,
-	generateTrackingCode,
-} from "../lib/time.js";
-import { getSettings, numberSetting } from "./settings.service.js";
-import { assertTablesAvailable } from "./availability.service.js";
+import { prisma } from '../lib/prisma.js';
+import { addMinutes, combineDateAndTime, generateInvoiceNumber, generateTrackingCode } from '../lib/time.js';
+import { getSettings, numberSetting } from './settings.service.js';
+import { assertTablesAvailable } from './availability.service.js';
+import { sendMockSms } from '../lib/sms.js';
 
 async function uniqueTrackingCode(client) {
 	for (let i = 0; i < 10; i++) {
@@ -16,7 +12,7 @@ async function uniqueTrackingCode(client) {
 		});
 		if (!existing) return code;
 	}
-	throw new Error("ساخت کد پیگیری ناموفق بود.");
+	throw new Error('ساخت کد پیگیری ناموفق بود.');
 }
 
 async function uniqueInvoiceNumber(client) {
@@ -25,7 +21,7 @@ async function uniqueInvoiceNumber(client) {
 		const existing = await client.invoice.findUnique({ where: { number } });
 		if (!existing) return number;
 	}
-	throw new Error("ساخت شماره فاکتور ناموفق بود.");
+	throw new Error('ساخت شماره فاکتور ناموفق بود.');
 }
 
 export async function createReservationHold({
@@ -37,27 +33,26 @@ export async function createReservationHold({
 	customerName,
 	customerPhone,
 	userId = null,
-	source = "ONLINE",
+	source = 'ONLINE',
 	originalReservationId = null,
 }) {
-	if (!Array.isArray(tableIds) || tableIds.length < 1 || tableIds.length > 2)
-		throw new Error("انتخاب میز نامعتبر است.");
+	if (!Array.isArray(tableIds) || tableIds.length < 1 || tableIds.length > 2) throw new Error('انتخاب میز نامعتبر است.');
+	if (!Number.isInteger(guestCount) || guestCount < 1 || guestCount > 50) throw new Error('تعداد نفرات نامعتبر است.');
+	if (!Number.isInteger(durationMinutes) || durationMinutes < 1) throw new Error('مدت رزرو نامعتبر است.');
+	if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('تاریخ نامعتبر است.');
+	if (typeof startTime !== 'string' || !/^\d{2}:\d{2}$/.test(startTime)) throw new Error('ساعت شروع نامعتبر است.');
+	if (!customerPhone) throw new Error('شماره موبایل نامعتبر است.');
+	if (!customerName || !String(customerName).trim()) throw new Error('نام مشتری لازم است.');
+
+	// خواندن تنظیمات قبل از باز شدن تراکنش، تا از استخر اتصال‌ها اتصال دوم گرفته نشود
+	const settings = await getSettings();
+	const pricePerGuest = numberSetting(settings, 'pricePerGuest', 100000);
+	const holdMinutes = numberSetting(settings, 'holdMinutes', 10);
 
 	try {
 		return await prisma.$transaction(
 			async (tx) => {
-				await assertTablesAvailable(
-					{ tableIds, date, startTime, durationMinutes, guestCount },
-					tx,
-				);
-
-				const settings = await getSettings();
-				const pricePerGuest = numberSetting(
-					settings,
-					"pricePerGuest",
-					100000,
-				);
-				const holdMinutes = numberSetting(settings, "holdMinutes", 10);
+				await assertTablesAvailable({ tableIds, date, startTime, durationMinutes, guestCount }, tx);
 				const totalAmount = pricePerGuest * guestCount;
 				const startAt = combineDateAndTime(date, startTime);
 				const endAt = addMinutes(startAt, durationMinutes);
@@ -75,14 +70,12 @@ export async function createReservationHold({
 						startAt,
 						endAt,
 						durationMinutes,
-						status:
-							source === "ADMIN_MANUAL" ? "CONFIRMED" : "HOLD",
+						status: source === 'ADMIN_MANUAL' ? 'CONFIRMED' : 'HOLD',
 						source,
-						holdExpiresAt:
-							source === "ADMIN_MANUAL" ? null : holdExpiresAt,
+						holdExpiresAt: source === 'ADMIN_MANUAL' ? null : holdExpiresAt,
 						pricePerGuest,
 						totalAmount,
-						paidAmount: source === "ADMIN_MANUAL" ? totalAmount : 0,
+						paidAmount: source === 'ADMIN_MANUAL' ? totalAmount : 0,
 						originalReservationId,
 						tables: {
 							create: tableIds.map((tableId) => ({ tableId })),
@@ -93,18 +86,9 @@ export async function createReservationHold({
 						payments: {
 							create: {
 								amount: totalAmount,
-								status:
-									source === "ADMIN_MANUAL"
-										? "PAID"
-										: "PENDING",
-								method:
-									source === "ADMIN_MANUAL"
-										? "MANUAL"
-										: "ZARINPAL",
-								provider:
-									source === "ADMIN_MANUAL"
-										? "manual"
-										: "zarinpal",
+								status: source === 'ADMIN_MANUAL' ? 'PAID' : 'PENDING',
+								method: source === 'ADMIN_MANUAL' ? 'MANUAL' : 'ZARINPAL',
+								provider: source === 'ADMIN_MANUAL' ? 'manual' : 'zarinpal',
 								isMock: false,
 							},
 						},
@@ -117,26 +101,22 @@ export async function createReservationHold({
 					},
 				});
 			},
-			{ isolationLevel: "Serializable" },
+			{ isolationLevel: 'Serializable' },
 		);
 	} catch (error) {
-		if (error.code === "P2034")
-			throw new Error(
-				"این میز همین الان توسط شخص دیگری رزرو شد؛ یک گزینه‌ی دیگر انتخاب کن.",
-			);
+		if (error.code === 'P2034') throw new Error('این میز همین الان توسط شخص دیگری رزرو شد؛ یک گزینه‌ی دیگر انتخاب کن.');
 		throw error;
 	}
 }
 
 export async function getReservationFull(idOrCode) {
-	const where = idOrCode.startsWith?.("RSV-")
-		? { trackingCode: idOrCode }
-		: { id: idOrCode };
+	if (typeof idOrCode !== 'string' || !idOrCode.trim()) return null;
+	const where = idOrCode.startsWith('RSV-') ? { trackingCode: idOrCode } : { id: idOrCode };
 	return prisma.reservation.findUnique({
 		where,
 		include: {
 			tables: { include: { table: true } },
-			payments: { orderBy: { createdAt: "desc" } },
+			payments: { orderBy: { createdAt: 'desc' } },
 			invoice: true,
 			user: true,
 		},
@@ -144,46 +124,26 @@ export async function getReservationFull(idOrCode) {
 }
 
 export async function createManualReservation(data) {
-	return createReservationHold({ ...data, source: "ADMIN_MANUAL" });
+	return createReservationHold({ ...data, source: 'ADMIN_MANUAL' });
 }
 
 export function canChangeOrCancel(reservation) {
 	const twoHoursFromNow = addMinutes(new Date(), 120);
-	return (
-		reservation.startAt > twoHoursFromNow &&
-		reservation.status === "CONFIRMED"
-	);
+	return reservation.startAt > twoHoursFromNow && reservation.status === 'CONFIRMED';
 }
 
-export async function cancelReservation(reservationId, note = "") {
+export async function cancelReservation(reservationId, note = '') {
 	const reservation = await getReservationFull(reservationId);
-	if (!reservation) throw new Error("رزرو پیدا نشد.");
-	if (!canChangeOrCancel(reservation))
-		throw new Error("لغو رزرو فقط تا ۲ ساعت قبل از شروع مجاز است.");
+	if (!reservation) throw new Error('رزرو پیدا نشد.');
+	if (!canChangeOrCancel(reservation)) throw new Error('لغو رزرو فقط تا ۲ ساعت قبل از شروع مجاز است.');
 	const updated = await prisma.reservation.update({
 		where: { id: reservationId },
-		data: { status: "CANCELLED", notes: note || reservation.notes },
+		data: { status: 'CANCELLED', notes: note || reservation.notes },
 	});
-	const { sendMockSms, cancellationMessage } = await import("../lib/sms.js");
 	await sendMockSms({
 		phone: reservation.customerPhone,
-		type: "CANCELLATION",
-		message: cancellationMessage
-			? cancellationMessage(reservation)
-			: `رزرو ${reservation.trackingCode} لغو شد.`,
-	});
+		type: 'CANCELLATION',
+		message: `رزرو ${reservation.trackingCode} لغو شد.`,
+	}).catch((error) => console.error('SMS لغو ارسال نشد:', error));
 	return updated;
-}
-
-export async function commitChangeIfReady(changeReservationId) {
-	const change = await getReservationFull(changeReservationId);
-	if (!change || !change.originalReservationId)
-		throw new Error("درخواست تغییر پیدا نشد.");
-	if (change.status !== "CONFIRMED")
-		throw new Error("تغییر هنوز تایید نشده است.");
-	await prisma.reservation.update({
-		where: { id: change.originalReservationId },
-		data: { status: "CANCELLED", notes: "با رزرو جدید جایگزین شد." },
-	});
-	return change;
 }

@@ -1,7 +1,5 @@
 /* index.html — صفحه‌ی اصلی رزرو — استایل اختصاصی همین صفحه. هیچ فایل دیگری این کلاس‌ها را تعریف نمی‌کند. */
 
-
-
 /* ===== منتقل‌شده از shared.css / map.css (فقط قوانینی که این صفحه واقعاً استفاده می‌کند) ===== */
 
 .topbar {
@@ -15,10 +13,10 @@
 	background: transparent;
 	box-shadow: none;
 	transition:
-	background 0.4s var(--ease),
-	padding 0.4s var(--ease),
-	box-shadow 0.4s var(--ease),
-	backdrop-filter 0.4s var(--ease);
+		background 0.4s var(--ease),
+		padding 0.4s var(--ease),
+		box-shadow 0.4s var(--ease),
+		backdrop-filter 0.4s var(--ease);
 }
 
 .topbar.is-scrolled {
@@ -28,8 +26,8 @@
 	backdrop-filter: blur(14px);
 	-webkit-backdrop-filter: blur(14px);
 	box-shadow:
-	0 1px 0 var(--line),
-	var(--shadow);
+		0 1px 0 var(--line),
+		var(--shadow);
 }
 
 .brand {
@@ -95,7 +93,7 @@
 }
 
 .nav a::after {
-	content: "";
+	content: '';
 	position: absolute;
 	bottom: -5px;
 	right: 0;
@@ -219,8 +217,8 @@ input {
 	border-radius: var(--r-xs);
 	padding: 12px 13px;
 	transition:
-	border-color var(--dur) var(--ease),
-	background var(--dur) var(--ease);
+		border-color var(--dur) var(--ease),
+		background var(--dur) var(--ease);
 }
 
 input::placeholder {
@@ -308,20 +306,8 @@ button.chip {
 	gap: 7px;
 	overflow-x: auto;
 	padding: 2px 2px 2px;
-	mask-image: linear-gradient(
-	to right,
-	transparent,
-	#000 22px,
-	#000 calc(100% - 22px),
-	transparent
-	);
-	-webkit-mask-image: linear-gradient(
-	to right,
-	transparent,
-	#000 22px,
-	#000 calc(100% - 22px),
-	transparent
-	);
+	mask-image: linear-gradient(to right, transparent, #000 22px, #000 calc(100% - 22px), transparent);
+	-webkit-mask-image: linear-gradient(to right, transparent, #000 22px, #000 calc(100% - 22px), transparent);
 }
 
 .date-row::-webkit-scrollbar {
@@ -430,8 +416,8 @@ div.clock-range div.field {
 	position: relative;
 	overflow: hidden;
 	transition:
-	transform 0.22s ease,
-	box-shadow 0.22s ease;
+		transform 0.22s ease,
+		box-shadow 0.22s ease;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -449,8 +435,8 @@ div.clock-range div.field {
 	position: relative;
 	overflow: hidden;
 	transition:
-	transform 0.22s ease,
-	box-shadow 0.22s ease;
+		transform 0.22s ease,
+		box-shadow 0.22s ease;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -458,15 +444,10 @@ div.clock-range div.field {
 }
 
 .primary-btn::before {
-	content: "";
+	content: '';
 	position: absolute;
 	inset: 0;
-	background: linear-gradient(
-	105deg,
-	transparent 30%,
-	rgba(255, 255, 255, 0.3) 50%,
-	transparent 70%
-	);
+	background: linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.3) 50%, transparent 70%);
 	transform: translateX(150%);
 }
 
@@ -622,8 +603,8 @@ div.clock-range div.field {
 	stroke-width: 4;
 	stroke-linecap: round;
 	transition:
-	stroke-dashoffset 1s linear,
-	stroke 0.4s ease;
+		stroke-dashoffset 1s linear,
+		stroke 0.4s ease;
 }
 
 .hold-ring.warn .progress {
@@ -673,12 +654,7 @@ div.clock-range div.field {
 }
 
 .skeleton {
-	background: linear-gradient(
-	90deg,
-	rgba(66, 46, 47, 0.05),
-	rgba(66, 46, 47, 0.11),
-	rgba(66, 46, 47, 0.05)
-	);
+	background: linear-gradient(90deg, rgba(66, 46, 47, 0.05), rgba(66, 46, 47, 0.11), rgba(66, 46, 47, 0.05));
 	background-size: 200% 100%;
 	animation: shimmer-bg 1.4s ease-in-out infinite;
 	border-radius: var(--r-xs);
@@ -944,10 +920,10 @@ div.clock-range div.field {
 	font-size: 12px;
 	background: rgba(255, 255, 255, 0.22);
 	transition:
-	background 0.22s ease,
-	border-color 0.22s ease,
-	color 0.22s ease,
-	transform 0.22s ease;
+		background 0.22s ease,
+		border-color 0.22s ease,
+		color 0.22s ease,
+		transform 0.22s ease;
 }
 
 .map-zone-tabs button:hover {
@@ -997,11 +973,7 @@ div.clock-range div.field {
 	place-content: center;
 	justify-items: center;
 	gap: 10px;
-	background: linear-gradient(
-	135deg,
-	rgba(239, 234, 228, 0.96),
-	rgba(197, 188, 173, 0.92)
-	);
+	background: linear-gradient(135deg, rgba(239, 234, 228, 0.96), rgba(197, 188, 173, 0.92));
 	color: var(--rich-sabel);
 }
 
@@ -1041,8 +1013,8 @@ div.clock-range div.field {
 	font-family: var(--font-serif);
 	border-left: 1px solid var(--line);
 	transition:
-	background 0.2s ease,
-	color 0.2s ease;
+		background 0.2s ease,
+		color 0.2s ease;
 }
 
 .map-controls button:first-child {
@@ -1115,8 +1087,8 @@ div.clock-range div.field {
 	transform-origin: center;
 	transform-box: fill-box;
 	transition:
-	transform 0.28s var(--ease),
-	filter 0.28s var(--ease);
+		transform 0.28s var(--ease),
+		filter 0.28s var(--ease);
 	animation: tableEnter 0.48s var(--ease) both;
 	animation-delay: var(--table-delay, 0ms);
 	filter: drop-shadow(0 7px 6px rgba(31, 21, 22, 0.13));
@@ -1152,8 +1124,8 @@ div.clock-range div.field {
 	stroke: var(--table-edge);
 	stroke-width: 1.4;
 	transition:
-	fill 0.3s ease,
-	stroke 0.3s ease;
+		fill 0.3s ease,
+		stroke 0.3s ease;
 }
 
 .table-highlight {
