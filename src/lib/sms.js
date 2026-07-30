@@ -15,7 +15,12 @@ export async function sendMockSms({ phone, type, message }) {
 		console.log(`\n[MOCK SMS][${type}] ${phone}: ${message}\n`);
 	} else {
 		// TODO: وقتی پروایدر واقعی (مثلاً ir.sms) انتخاب شد، اینجا فراخوانی واقعی اضافه می‌شه.
-		await prisma.smsLog.update({ where: { id: log.id }, data: { status: 'FAILED' } });
+		// log می‌تونه null باشه (اگه نوشتن لاگ بالاتر شکست خورده باشه)
+		if (log) {
+			await prisma.smsLog
+				.update({ where: { id: log.id }, data: { status: 'FAILED' } })
+				.catch((error) => console.error('به‌روزرسانی وضعیت لاگ پیامک ناموفق بود:', error));
+		}
 		throw new Error(`هیچ سرویس پیامکی برای SMS_MODE="${config.smsMode}" پیاده‌سازی نشده است.`);
 	}
 	return log;

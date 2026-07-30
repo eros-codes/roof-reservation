@@ -118,13 +118,16 @@ reservationRouter.post('/:id/change/hold', optionalUser, async (req, res, next) 
 		if (newTotal === oldTotal) {
 			const [, confirmedChange] = await prisma.$transaction([
 				prisma.payment.updateMany({
-					where: { reservationId: change.id },
+					where: {
+						reservationId: change.id,
+						status: { in: ['PENDING', 'FAILED', 'REVIEW'] },
+					},
 					data: {
 						status: 'PAID',
-						method: 'ZARINPAL',
+						method: 'MANUAL',
 						refId: `CHANGE-FREE-${Date.now()}`,
 						verifiedAt: new Date(),
-						isMock: false,
+						isMock: true,
 					},
 				}),
 				prisma.reservation.update({
@@ -160,10 +163,10 @@ reservationRouter.post('/:id/change/hold', optionalUser, async (req, res, next) 
 					},
 					data: {
 						status: 'PAID',
-						method: 'ZARINPAL',
+						method: 'MANUAL',
 						refId: `CHANGE-REFUND-${Date.now()}`,
 						verifiedAt: new Date(),
-						isMock: false,
+						isMock: true,
 					},
 				}),
 				prisma.reservation.update({

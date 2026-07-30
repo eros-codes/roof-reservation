@@ -114,24 +114,33 @@ function statusOptions() {
     ${state.admin?.role !== 'RECEPTION' ? '<option value="CONFIRMED">تایید</option>' : ''}`;
 }
 
-async function loadReservations() {
-	el('reservationBox').innerHTML = '<div class="skeleton" style="height:180px"></div>';
+let allReservations = [];
+let reservationsTotal = 0;
+
+async function loadReservations({ append = false } = {}) {
+	if (!append) {
+		el('reservationBox').innerHTML = '<div class="skeleton" style="height:180px"></div>';
+		allReservations = [];
+	}
 	let reservations;
+	let total;
 	try {
-		({ reservations } = await api('/api/admin/reservations'));
+		({ reservations, total } = await api(`/api/admin/reservations?limit=100&offset=${allReservations.length}`));
 	} catch (error) {
 		el('reservationBox').innerHTML = '<div class="notice danger"></div>';
 		el('reservationBox').querySelector('.notice').textContent = error.message;
 		return;
 	}
-	if (!reservations?.length) {
+	allReservations = allReservations.concat(reservations || []);
+	reservationsTotal = total ?? allReservations.length;
+	if (!allReservations.length) {
 		el('reservationBox').innerHTML =
 			`<div class="empty-state">${ICONS.empty}<strong>هنوز رزروی ثبت نشده</strong><p>رزروهای جدید همین‌جا ظاهر می‌شن.</p></div>`;
 		return;
 	}
 
 	el('reservationBox').innerHTML =
-		`<div id="reservationsNotice"></div><div class="table-scroll"><table class="table-list"><thead><tr><th>کد</th><th>مشتری</th><th>زمان</th><th>میز</th><th>مبلغ</th><th>وضعیت</th><th>عملیات</th></tr></thead><tbody>${reservations
+		`<div id="reservationsNotice"></div><div class="table-scroll"><table class="table-list"><thead><tr><th>کد</th><th>مشتری</th><th>زمان</th><th>میز</th><th>مبلغ</th><th>وضعیت</th><th>عملیات</th></tr></thead><tbody>${allReservations
 			.map(
 				(reservation) => `
     <tr>
@@ -145,6 +154,15 @@ async function loadReservations() {
     </tr>`,
 			)
 			.join('')}</tbody></table></div>`;
+
+	const listNotice = el('reservationsNotice');
+	if (allReservations.length < reservationsTotal) {
+		listNotice.className = 'notice';
+		listNotice.innerHTML = '<span></span> <button type="button" class="secondary-btn" id="loadMoreReservations">نمایش بیشتر</button>';
+		listNotice.querySelector('span').textContent =
+			`${allReservations.length.toLocaleString('fa-IR')} رزرو از مجموع ${reservationsTotal.toLocaleString('fa-IR')} رزرو نمایش داده شده.`;
+		el('loadMoreReservations').addEventListener('click', () => loadReservations({ append: true }));
+	}
 
 	el('reservationBox')
 		.querySelectorAll('[data-status]')

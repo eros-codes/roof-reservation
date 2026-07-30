@@ -222,19 +222,7 @@ function comboAvailabilityForStart({
 	const combinedMax = a.maxGuests + b.maxGuests;
 	const combinedCapacity = a.capacity + b.capacity;
 	const combinedMin = Math.max(a.minGuests, b.minGuests);
-	const largestSingle = Math.max(a.maxGuests, b.maxGuests);
 	if (guestCount < combinedMin || guestCount > combinedMax) return null;
-	// ترکیب فقط وقتی پیشنهاد می‌شود که هیچ میز تک‌نفره‌ای برای این بازه مناسب نباشد.
-	const effectiveBuffer = precomputedBuffer ?? numberSetting(settings, 'cleaningBufferMinutes', 15);
-	if (guestCount <= largestSingle) {
-		const singleWorks = [a, b].some(
-			(t) =>
-				t.maxGuests >= guestCount &&
-				t.minGuests <= guestCount &&
-				!reservations.some((r) => reservationBlocksTable(r, t.id, check.startAt, check.endAt, effectiveBuffer)),
-		);
-		if (singleWorks) return null;
-	}
 	const closedA = isTableClosed(a, dayClosures, startTime, check.endTime);
 	const closedB = isTableClosed(b, dayClosures, startTime, check.endTime);
 	if (closedA || closedB) return null;
@@ -330,9 +318,12 @@ export async function getAvailability({ date, guestCount, durationMinutes, start
 		tableResults.push({ ...table, availability: best });
 	}
 
+	// ترکیب میز فقط وقتی معنا دارد که هیچ میز تکی برای این تعداد و زمان آزاد نباشد.
+	// این تصمیم باید روی کل میزهای کافه گرفته شود، نه فقط دو میزِ خودِ ترکیب.
+	const anySingleAvailable = tableResults.some((t) => t.availability?.available);
 	const combos = [];
 	const byId = Object.fromEntries(tables.map((t) => [t.id, t]));
-	for (const connection of connectionRows) {
+	for (const connection of anySingleAvailable ? [] : connectionRows) {
 		const a = byId[connection.tableAId];
 		const b = byId[connection.tableBId];
 		if (!a || !b) continue;

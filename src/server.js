@@ -13,7 +13,7 @@ import { reservationRouter } from './routes/reservation.routes.js';
 import { paymentRouter } from './routes/payment.routes.js';
 import { adminRouter } from './routes/admin.routes.js';
 import { expireOldHolds } from './services/availability.service.js';
-import rateLimit from 'express-rate-limit'; // این خط رو بالای فایل کنار بقیه‌ی import ها بذار
+import rateLimit from 'express-rate-limit';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();

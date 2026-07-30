@@ -26,7 +26,7 @@ if (process.env.JWT_SECRET && process.env.JWT_SECRET.length < 32) {
 }
 
 export const config = {
-	port: Number.isInteger(Number(process.env.PORT)) ? Number(process.env.PORT) : 3000,
+		port: Number.isInteger(Number(process.env.PORT)) && Number(process.env.PORT) > 0 ? Number(process.env.PORT) : 3000,
 	nodeEnv: process.env.NODE_ENV || 'development',
 	appUrl: process.env.APP_URL || 'http://localhost:3000',
 	jwtSecret: process.env.JWT_SECRET || 'dev-user-secret-change-me',

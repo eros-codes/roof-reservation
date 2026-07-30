@@ -8,8 +8,11 @@ const STARTPAY_URL = `https://${HOST}/pg/StartPay`;
 async function fetchZarinpal(url, body) {
 	const controller = new AbortController();
 	const timeout = setTimeout(() => controller.abort(), 10000);
+	let response;
+	let text;
+	// مرحله‌ی شبکه: فقط خطاهای اتصال/timeout اینجا مدیریت می‌شن
 	try {
-		const response = await fetch(url, {
+		response = await fetch(url, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -18,17 +21,18 @@ async function fetchZarinpal(url, body) {
 			body: JSON.stringify(body),
 			signal: controller.signal,
 		});
-		const text = await response.text();
-		try {
-			return JSON.parse(text);
-		} catch {
-			throw new Error(`پاسخ نامعتبر از درگاه پرداخت (کد ${response.status}).`);
-		}
+		text = await response.text();
 	} catch (error) {
 		if (error.name === 'AbortError') throw new Error('درگاه پرداخت زرین‌پال به‌موقع پاسخ نداد.');
 		throw new Error('اتصال به درگاه پرداخت زرین‌پال برقرار نشد.');
 	} finally {
 		clearTimeout(timeout);
+	}
+	// مرحله‌ی پارس: جدا نگه داشته می‌شه تا پیامش توسط catch بالا بلعیده نشه
+	try {
+		return JSON.parse(text);
+	} catch {
+		throw new Error(`پاسخ نامعتبر از درگاه پرداخت (کد ${response.status}).`);
 	}
 }
 

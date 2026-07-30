@@ -177,7 +177,9 @@ authRouter.post('/admin/login', adminLoginLimiter, async (req, res, next) => {
 		const admin = await prisma.adminUser.findUnique({ where: { email } });
 		// حتی وقتی ادمین وجود ندارد یک مقایسه‌ی ساختگی انجام می‌شود تا زمان پاسخ
 		// در هر دو حالت یکسان بماند و ایمیل‌های معتبر از روی زمان لو نروند
-		const hashToCompare = admin?.passwordHash || '$2a$10$invalidinvalidinvalidinvalidinvalidinvalidinvalidinvaliduO';
+		// هش معتبر bcrypt از یک رشته‌ی تصادفی؛ باید معتبر باشد وگرنه compare
+		// بدون محاسبه فوراً false برمی‌گرداند و اختلاف زمانی باقی می‌ماند
+		const hashToCompare = admin?.passwordHash || '$2b$10$aSeBTOggmRzaYYKHqHDz2eQPrC5Eacr6fNxBub.SHZAKJ3gq1ahba';
 		const ok = await bcrypt.compare(password, hashToCompare);
 		if (!admin || !admin.isActive || !ok) return res.status(401).json({ message: 'اطلاعات ورود اشتباه است.' });
 		setCookie(res, 'adminToken', signAdminToken(admin));
