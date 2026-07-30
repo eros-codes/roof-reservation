@@ -85,12 +85,16 @@ function setMode(mode) {
 	});
 	el('exactBox').hidden = mode !== 'exact';
 	el('rangeBox').hidden = mode !== 'range';
-	clearSelection();
-	renderMap();
+	// تعویض حالت هم شرایط جستجو را عوض می‌کند، پس نتایج قبلی دیگر معتبر نیست
+	invalidateAvailability();
 }
 
 document.querySelectorAll('.mode-tabs button').forEach((button) => {
 	button.addEventListener('click', () => setMode(button.dataset.mode));
+});
+// تایپ مستقیم در این ورودی‌ها هم مثل دکمه‌های +/− شرایط جستجو را عوض می‌کند
+['guestCount', 'startTime', 'rangeStart', 'rangeEnd'].forEach((inputId) => {
+	el(inputId)?.addEventListener('change', invalidateAvailability);
 });
 /* ---------- selection + detail panel ---------- */
 function detailCard(title, lines, showAction = false) {

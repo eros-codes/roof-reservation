@@ -23,7 +23,7 @@ mountOtpWidget(document.getElementById('otpBox'), {
         ${row('میز', tablesText(reservation))}
         ${row('مبلغ', toman(reservation.totalAmount))}
         <div class="detail-row"><span>وضعیت</span><span class="status ${escapeHtml(reservation.status)}">${escapeHtml(statusFa(reservation.status))}</span></div>
-        <div class="actions"><a class="secondary-btn" href="/invoice.html?id=${reservation.id}">${ICONS.receipt}<span>فاکتور</span></a></div>
+        <div class="actions"><a class="secondary-btn" href="/invoice.html?id=${encodeURIComponent(reservation.id)}">${ICONS.receipt}<span>فاکتور</span></a></div>
       `;
 		} catch (error) {
 			result.className = 'notice danger';

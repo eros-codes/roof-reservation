@@ -246,31 +246,35 @@ function renderTableList() {
 			)
 			.join('')}</tbody></table></div>`;
 
-	document.querySelectorAll('[data-edit-table]').forEach((button) => {
-		button.addEventListener('click', () => {
-			state.mapEditor?.selectTable(button.dataset.editTable);
-			el('adminMapEditor').scrollIntoView({ behavior: 'smooth', block: 'start' });
+	el('tableBox')
+		.querySelectorAll('[data-edit-table]')
+		.forEach((button) => {
+			button.addEventListener('click', () => {
+				state.mapEditor?.selectTable(button.dataset.editTable);
+				el('adminMapEditor').scrollIntoView({ behavior: 'smooth', block: 'start' });
+			});
 		});
-	});
 
-	document.querySelectorAll('[data-toggle-table]').forEach((button) => {
-		button.addEventListener('click', async () => {
-			const table = state.tables.find((item) => item.id === button.dataset.toggleTable);
-			const notice = el('tableListNotice');
-			if (!table) {
-				notice.className = 'notice danger';
-				notice.textContent = 'این میز دیگه در لیست نیست؛ صفحه رو تازه کن.';
-				return;
-			}
-			try {
-				await api(`/api/admin/tables/${table.id}`, { method: 'PATCH', body: { isActive: !table.isActive } });
-				await loadTables({ keepSelectedId: table.id });
-			} catch (error) {
-				notice.className = 'notice danger';
-				notice.textContent = error.message;
-			}
+	el('tableBox')
+		.querySelectorAll('[data-toggle-table]')
+		.forEach((button) => {
+			button.addEventListener('click', async () => {
+				const table = state.tables.find((item) => item.id === button.dataset.toggleTable);
+				const notice = el('tableListNotice');
+				if (!table) {
+					notice.className = 'notice danger';
+					notice.textContent = 'این میز دیگه در لیست نیست؛ صفحه رو تازه کن.';
+					return;
+				}
+				try {
+					await api(`/api/admin/tables/${table.id}`, { method: 'PATCH', body: { isActive: !table.isActive } });
+					await loadTables({ keepSelectedId: table.id });
+				} catch (error) {
+					notice.className = 'notice danger';
+					notice.textContent = error.message;
+				}
+			});
 		});
-	});
 }
 
 async function loadTables(options = {}) {
@@ -296,11 +300,13 @@ async function loadTables(options = {}) {
 
 /* ---------- working hours ---------- */
 async function loadHours() {
+	el('hoursBox').innerHTML = '<div class="skeleton" style="height:180px"></div>';
 	let workingHours;
 	try {
 		({ workingHours } = await api('/api/admin/working-hours'));
 	} catch (error) {
-		el('hoursBox').innerHTML = `<div class="notice danger">${error.message}</div>`;
+		el('hoursBox').innerHTML = '<div class="notice danger"></div>';
+		el('hoursBox').querySelector('.notice').textContent = error.message;
 		return;
 	}
 	el('hoursBox').innerHTML =
@@ -317,35 +323,39 @@ async function loadHours() {
 			)
 			.join('')}</tbody></table></div>`;
 
-	document.querySelectorAll('[data-save-hour]').forEach((button) => {
-		button.addEventListener('click', async () => {
-			const day = button.dataset.saveHour;
-			const notice = el('hoursNotice');
-			try {
-				await api(`/api/admin/working-hours/${day}`, {
-					method: 'PATCH',
-					body: {
-						opensAt: q(`[data-open="${day}"]`).value,
-						closesAt: q(`[data-close="${day}"]`).value,
-						isClosed: q(`[data-closed="${day}"]`).checked,
-					},
-				});
-				await loadHours();
-			} catch (error) {
-				notice.className = 'notice danger';
-				notice.textContent = error.message;
-			}
+	el('hoursBox')
+		.querySelectorAll('[data-save-hour]')
+		.forEach((button) => {
+			button.addEventListener('click', async () => {
+				const day = button.dataset.saveHour;
+				const notice = el('hoursNotice');
+				try {
+					await api(`/api/admin/working-hours/${day}`, {
+						method: 'PATCH',
+						body: {
+							opensAt: q(`[data-open="${day}"]`).value,
+							closesAt: q(`[data-close="${day}"]`).value,
+							isClosed: q(`[data-closed="${day}"]`).checked,
+						},
+					});
+					await loadHours();
+				} catch (error) {
+					notice.className = 'notice danger';
+					notice.textContent = error.message;
+				}
+			});
 		});
-	});
 }
 
 /* ---------- closures ---------- */
 async function loadClosures() {
+	el('closuresBox').innerHTML = '<div class="skeleton" style="height:180px"></div>';
 	let closures;
 	try {
 		({ closures } = await api('/api/admin/closures'));
 	} catch (error) {
-		el('closuresBox').innerHTML = `<div class="notice danger">${error.message}</div>`;
+		el('closuresBox').innerHTML = '<div class="notice danger"></div>';
+		el('closuresBox').querySelector('.notice').textContent = error.message;
 		return;
 	}
 	el('closuresBox').innerHTML = `
@@ -393,26 +403,30 @@ async function loadClosures() {
 		}
 	});
 
-	document.querySelectorAll('[data-del-closure]').forEach((button) => {
-		button.addEventListener('click', async () => {
-			try {
-				await api(`/api/admin/closures/${button.dataset.delClosure}`, { method: 'DELETE' });
-				await loadClosures();
-			} catch (error) {
-				el('closuresNotice').className = 'notice danger';
-				el('closuresNotice').textContent = error.message;
-			}
+	el('closuresBox')
+		.querySelectorAll('[data-del-closure]')
+		.forEach((button) => {
+			button.addEventListener('click', async () => {
+				try {
+					await api(`/api/admin/closures/${button.dataset.delClosure}`, { method: 'DELETE' });
+					await loadClosures();
+				} catch (error) {
+					el('closuresNotice').className = 'notice danger';
+					el('closuresNotice').textContent = error.message;
+				}
+			});
 		});
-	});
 }
 
 /* ---------- settings ---------- */
 async function loadSettings() {
+	el('settingsBox').innerHTML = '<div class="skeleton" style="height:140px"></div>';
 	let settings;
 	try {
 		({ settings } = await api('/api/admin/settings'));
 	} catch (error) {
-		el('settingsBox').innerHTML = `<div class="notice danger">${error.message}</div>`;
+		el('settingsBox').innerHTML = '<div class="notice danger"></div>';
+		el('settingsBox').querySelector('.notice').textContent = error.message;
 		return;
 	}
 	el('settingsBox').innerHTML = `<div class="form-grid">
@@ -448,7 +462,8 @@ async function loadReports() {
 			kpi('x', 'لغوشده', report.cancelled.toLocaleString('fa-IR')) +
 			kpi('ban', 'عدم حضور', report.noShow.toLocaleString('fa-IR'));
 	} catch (error) {
-		el('reportsBox').innerHTML = `<div class="notice danger">${error.message}</div>`;
+		el('reportsBox').innerHTML = '<div class="notice danger"></div>';
+		el('reportsBox').querySelector('.notice').textContent = error.message;
 	}
 }
 
@@ -488,8 +503,19 @@ async function init() {
 	});
 }
 
+// هر خطای ۴۰۱ در هر زمانی یعنی نشست منقضی شده؛ کاربر باید به صفحه‌ی ورود برگردد
+window.addEventListener('unhandledrejection', (event) => {
+	if (event.reason?.status === 401) {
+		location.href = '/admin-login.html';
+	}
+});
+
 init().catch((error) => {
 	console.error(error);
+	if (error.status === 401) {
+		location.href = '/admin-login.html';
+		return;
+	}
 	const banner = document.createElement('div');
 	banner.className = 'notice danger';
 	banner.textContent = error.message;

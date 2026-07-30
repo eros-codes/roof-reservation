@@ -26,8 +26,8 @@ function renderExpired(title = 'زمان نگه‌داری تمام شد', messa
 	box.innerHTML = `
     <div class="result-state">
       <div class="result-icon warn">${ICONS.clock}</div>
-      <h3>${title}</h3>
-      <p>${message}</p>
+      <h3>${escapeHtml(title)}</h3>
+      <p>${escapeHtml(message)}</p>
       <a class="primary-btn" href="/" style="max-width:200px">انتخاب دوباره</a>
     </div>`;
 }
@@ -106,8 +106,10 @@ function render() {
     </div>
   `;
 
-	if (holdActive) ring = mountHoldRing(document.getElementById('ringMount'), reservation.holdExpiresAt, { onExpire: renderExpired });
+	// دکمه اول وصل می‌شود: اگر تایمر در همان لحظه منقضی باشد، onExpire محتوای
+	// box را عوض می‌کند و دیگر payBtn وجود ندارد
 	document.getElementById('payBtn').addEventListener('click', pay);
+	if (holdActive) ring = mountHoldRing(document.getElementById('ringMount'), reservation.holdExpiresAt, { onExpire: renderExpired });
 }
 
 async function pay() {

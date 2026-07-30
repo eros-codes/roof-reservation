@@ -285,7 +285,7 @@ export class RoofMap {
 				if (!response.ok) throw new Error('فایل پایه نقشه بارگذاری نشد.');
 				return response.text();
 			}),
-			fetch(this.configUrl, { cache: 'no-cache' }).then((response) => {
+			fetch(this.configUrl).then((response) => {
 				if (!response.ok) throw new Error('تنظیمات نقشه بارگذاری نشد.');
 				return response.json();
 			}),
@@ -319,9 +319,11 @@ export class RoofMap {
 		if (!this.zoneTabs) return;
 		const entries = Object.entries(this.config.zones || {});
 		this.zoneTabs.innerHTML = entries
-			.map(([key, zone]) => `<button type="button" data-map-zone="${key}" class="${key === 'ALL' ? 'active' : ''}"></button>`)
+			.map(([key]) => `<button type="button" data-map-zone="${key}" class="${key === 'ALL' ? 'active' : ''}"></button>`)
 			.join('');
 		this.zoneTabs.querySelectorAll('[data-map-zone]').forEach((button) => {
+			// متن با textContent ست می‌شه تا برچسبِ آمده از فایل کانفیگ به‌عنوان HTML اجرا نشه
+			button.textContent = this.config.zones?.[button.dataset.mapZone]?.label || button.dataset.mapZone;
 			button.addEventListener('click', () => this.focusZone(button.dataset.mapZone));
 		});
 	}

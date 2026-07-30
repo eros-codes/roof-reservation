@@ -25,6 +25,27 @@ export function mountOtpWidget(container, { purpose, extraFields = [], submitLab
 		return Object.fromEntries(extraFields.map((f) => [f.key, q(`[data-otp-extra="${f.key}"]`).value.trim()]));
 	}
 
+	let cooldownTimer = null;
+	const SEND_LABEL = 'ارسال کد تایید';
+
+	function startResendCooldown(btn) {
+		let remaining = 60;
+		clearInterval(cooldownTimer);
+		btn.disabled = true;
+		btn.textContent = `ارسال مجدد (${remaining.toLocaleString('fa-IR')})`;
+		cooldownTimer = setInterval(() => {
+			remaining -= 1;
+			if (remaining <= 0) {
+				clearInterval(cooldownTimer);
+				cooldownTimer = null;
+				btn.disabled = false;
+				btn.textContent = SEND_LABEL;
+				return;
+			}
+			btn.textContent = `ارسال مجدد (${remaining.toLocaleString('fa-IR')})`;
+		}, 1000);
+	}
+
 	q('[data-otp-send]').addEventListener('click', async () => {
 		const phone = q('[data-otp-phone]').value.trim();
 		if (!phone) {
@@ -44,23 +65,12 @@ export function mountOtpWidget(container, { purpose, extraFields = [], submitLab
 			q('[data-otp-code-field]').hidden = false;
 			q('[data-otp-verify]').hidden = false;
 			q('[data-otp-code]').focus();
-			let remaining = 60;
-			const label = btn.textContent;
-			const countdown = setInterval(() => {
-				remaining -= 1;
-				if (remaining <= 0) {
-					clearInterval(countdown);
-					btn.disabled = false;
-					btn.textContent = label;
-					return;
-				}
-				btn.textContent = `ارسال مجدد (${remaining.toLocaleString('fa-IR')})`;
-			}, 1000);
-			return;
+			// وضعیت disabled را خودِ شمارش معکوس مدیریت می‌کند، نه finally —
+			// وگرنه دکمه قبل از اولین تیک تایمر دوباره فعال می‌شود
+			startResendCooldown(btn);
 		} catch (error) {
 			showNotice(error.message, 'danger');
-		} finally {
-			if (!btn.textContent.startsWith('ارسال مجدد')) btn.disabled = false;
+			btn.disabled = false;
 		}
 	});
 
