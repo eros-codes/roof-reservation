@@ -474,15 +474,52 @@ async function loadSettings() {
 }
 
 /* ---------- reports ---------- */
+function revenueChart(daily) {
+	const max = Math.max(...daily.map((d) => d.amount), 1);
+	const bars = daily
+		.map((d) => {
+			const height = Math.round((d.amount / max) * 100);
+			const label = new Date(d.date).toLocaleDateString('fa-IR', { weekday: 'short' });
+			return `
+        <div class="chart-col">
+          <div class="chart-bar" style="height:${height || 2}%" title="${escapeHtml(toman(d.amount))}"></div>
+          <span class="chart-label">${escapeHtml(label)}</span>
+        </div>`;
+		})
+		.join('');
+	return `
+    <div class="report-card">
+      <h4>درآمد هفت روز اخیر</h4>
+      <div class="chart-wrap">${bars}</div>
+    </div>`;
+}
+
+function topTablesCard(rows) {
+	if (!rows.length) return '';
+	const items = rows
+		.map(
+			(t) =>
+				`<div class="detail-row"><span>میز ${escapeHtml(t.displayNumber)}</span><span>${t.count.toLocaleString('fa-IR')} رزرو</span></div>`,
+		)
+		.join('');
+	return `<div class="report-card"><h4>پرتقاضاترین میزها</h4>${items}</div>`;
+}
+
 async function loadReports() {
 	el('reportsBox').innerHTML = skeletonKpis(4);
 	try {
 		const report = await api('/api/admin/reports/revenue');
 		el('reportsBox').innerHTML =
+			kpi('receipt', 'درآمد کل', toman(report.totalPaid)) +
 			kpi('check', 'پرداخت موفق', report.paidCount.toLocaleString('fa-IR')) +
-			kpi('receipt', 'درآمد', toman(report.totalPaid)) +
+			kpi('chart', 'میانگین هر رزرو', toman(report.avgPerReservation)) +
+			kpi('users', 'میانگین نفرات', report.avgGuests.toLocaleString('fa-IR')) +
+			kpi('calendar', 'رزروهای پیش‌رو', report.upcoming.toLocaleString('fa-IR')) +
+			kpi('check', 'تکمیل‌شده', report.completed.toLocaleString('fa-IR')) +
 			kpi('x', 'لغوشده', report.cancelled.toLocaleString('fa-IR')) +
-			kpi('ban', 'عدم حضور', report.noShow.toLocaleString('fa-IR'));
+			kpi('ban', 'عدم حضور', report.noShow.toLocaleString('fa-IR')) +
+			revenueChart(report.daily) +
+			topTablesCard(report.topTables);
 	} catch (error) {
 		el('reportsBox').innerHTML = '<div class="notice danger"></div>';
 		el('reportsBox').querySelector('.notice').textContent = error.message;

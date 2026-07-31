@@ -32,7 +32,9 @@ function normalizeViewBox(input) {
 function tableStateClass(table, selectedIds, editorMode) {
 	if (selectedIds.includes(table.id)) return 'is-selected';
 	if (editorMode) return table.isActive ? 'is-neutral' : 'is-unavailable';
-	if (!table.availability?.available) return 'is-unavailable';
+	// هنوز بررسی نشده (شرایط جستجو عوض شده) — نه آزاد، نه رزروشده
+	if (!table.availability) return 'is-neutral';
+	if (!table.availability.available) return 'is-unavailable';
 	return table.availability.matchType === 'perfect' ? 'is-perfect' : 'is-soft';
 }
 

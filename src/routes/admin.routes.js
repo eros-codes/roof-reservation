@@ -24,7 +24,10 @@ adminRouter.get('/dashboard', async (_req, res, next) => {
 			prisma.reservation.count({ where: { startAt: { gte: start, lt: end }, status: { in: ['CONFIRMED', 'COMPLETED'] } } }),
 			prisma.reservation.count({ where: { status: { in: ['HOLD', 'PAYMENT_PENDING', 'PAYMENT_REVIEW'] } } }),
 			prisma.reservation.count({ where: { status: 'NO_SHOW' } }),
-			prisma.payment.aggregate({ where: { status: 'PAID', isMock: false }, _sum: { amount: true } }),
+			prisma.payment.aggregate({
+				where: { status: 'PAID', reservation: { status: { not: 'CANCELLED' } } },
+				_sum: { amount: true },
+			}),
 		]);
 		res.json({ todayReservations, pendingPayments, noShows, totalRevenue: revenue._sum.amount || 0 });
 	} catch (error) {
@@ -419,10 +422,71 @@ adminRouter.delete('/closures/:id', requireRole('OWNER', 'MANAGER'), async (req,
 
 adminRouter.get('/reports/revenue', requireRole('OWNER', 'MANAGER'), async (_req, res, next) => {
 	try {
-		const paid = await prisma.payment.aggregate({ where: { status: 'PAID', isMock: false }, _sum: { amount: true }, _count: true });
-		const cancelled = await prisma.reservation.count({ where: { status: 'CANCELLED' } });
-		const noShow = await prisma.reservation.count({ where: { status: 'NO_SHOW' } });
-		res.json({ totalPaid: paid._sum.amount || 0, paidCount: paid._count, cancelled, noShow });
+		const now = new Date();
+		const sevenDaysAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+
+		// درآمد = هر پرداخت موفق، منهای رزروهای لغوشده
+		const paidWhere = { status: 'PAID', isMock: false, reservation: { status: { not: 'CANCELLED' } } };
+
+		const [paid, counts, guestAgg, recentPayments, topTables] = await Promise.all([
+			prisma.payment.aggregate({ where: paidWhere, _sum: { amount: true }, _count: true }),
+			prisma.reservation.groupBy({ by: ['status'], _count: { _all: true } }),
+			prisma.reservation.aggregate({
+				where: { status: { in: ['CONFIRMED', 'COMPLETED', 'NO_SHOW'] } },
+				_avg: { guestCount: true },
+			}),
+			prisma.payment.findMany({
+				where: {
+					...paidWhere,
+					reservation: { status: { not: 'CANCELLED' }, startAt: { gte: sevenDaysAgo } },
+				},
+				select: { amount: true, reservation: { select: { startAt: true } } },
+			}),
+			prisma.reservationTable.groupBy({
+				by: ['tableId'],
+				_count: { _all: true },
+				orderBy: { _count: { tableId: 'desc' } },
+				take: 5,
+			}),
+		]);
+
+		const byStatus = Object.fromEntries(counts.map((c) => [c.status, c._count._all]));
+
+		// درآمد هفت روز اخیر، گروه‌بندی بر اساس تاریخ محلی رزرو
+		const dayKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+		const daily = new Map();
+		for (let i = 6; i >= 0; i--) {
+			const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+			daily.set(dayKey(d), 0);
+		}
+		for (const p of recentPayments) {
+			const key = dayKey(new Date(p.reservation.startAt));
+			if (daily.has(key)) daily.set(key, daily.get(key) + p.amount);
+		}
+
+		const tableInfo = await prisma.cafeTable.findMany({
+			where: { id: { in: topTables.map((t) => t.tableId) } },
+			select: { id: true, displayNumber: true, zone: true },
+		});
+		const tableById = Object.fromEntries(tableInfo.map((t) => [t.id, t]));
+
+		const totalPaid = paid._sum.amount || 0;
+		res.json({
+			totalPaid,
+			paidCount: paid._count,
+			avgPerReservation: paid._count ? Math.round(totalPaid / paid._count) : 0,
+			avgGuests: Math.round((guestAgg._avg.guestCount || 0) * 10) / 10,
+			completed: byStatus.COMPLETED || 0,
+			cancelled: byStatus.CANCELLED || 0,
+			noShow: byStatus.NO_SHOW || 0,
+			upcoming: byStatus.CONFIRMED || 0,
+			daily: [...daily].map(([date, amount]) => ({ date, amount })),
+			topTables: topTables.map((t) => ({
+				displayNumber: tableById[t.tableId]?.displayNumber || '؟',
+				zone: tableById[t.tableId]?.zone || '',
+				count: t._count._all,
+			})),
+		});
 	} catch (error) {
 		next(error);
 	}

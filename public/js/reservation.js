@@ -10,6 +10,11 @@ const state = {
 	mode: 'exact',
 	duration: 60,
 	availability: null,
+	// لیست میزها جدا نگه داشته می‌شه تا با باطل‌شدن نتایج، خود میزها از نقشه محو نشن
+	knownTables: [],
+	// بعد از اولین جستجو، تغییر شرایط دیگه نتایج رو پاک نمی‌کنه بلکه زنده به‌روز می‌کنه
+	hasSearched: false,
+	searchSeq: 0,
 	selectedTableIds: [],
 	selectedLabel: '',
 	map: null,
@@ -22,7 +27,13 @@ initHeaderScroll();
 
 function renderMap() {
 	if (!state.map) return;
-	state.map.setTables(state.availability?.tables || [], {
+	if (state.availability?.tables) {
+		state.knownTables = state.availability.tables;
+	}
+	// وقتی نتایج باطل شده، میزها سر جاشون می‌مونن ولی بدون وضعیت آزاد/پر،
+	// تا نه سبزِ گمراه‌کننده باشن نه ناپدید
+	const tables = state.availability?.tables || state.knownTables.map((t) => ({ ...t, availability: null }));
+	state.map.setTables(tables, {
 		selectedTableIds: state.selectedTableIds,
 		mode: state.mode,
 	});
@@ -33,14 +44,62 @@ function clearSelection() {
 	state.selectedLabel = '';
 	state.map?.setSelected([]);
 }
+let liveSearchTimer = null;
+
+// نتیجه‌ی جستجو رو روی صفحه می‌نشونه (هم برای جستجوی دستی، هم زنده)
+function applyAvailabilityResult() {
+	renderMap();
+	renderCombos();
+	const tables = state.availability?.tables || [];
+	const combos = state.availability?.combos || [];
+	const availableCount = tables.filter((t) => t.availability?.available).length;
+	if (availableCount || combos.length) {
+		el('searchNotice').className = 'notice ok';
+		el('searchNotice').textContent =
+			state.availability?.exactMissingMessage || `${availableCount.toLocaleString('fa-IR')} میز مناسب روی نقشه روشن شد.`;
+		el('selectedDetail').innerHTML = '<h4>میزی انتخاب نشده</h4><p>روی یک میز روشن ضربه بزن تا جزئیاتش رو ببینی.</p>';
+	} else {
+		el('searchNotice').className = 'notice warn';
+		el('searchNotice').textContent = 'برای این ترکیب زمان و تعداد نفرات، میز آزادی پیدا نشد. زمان یا تاریخ نزدیک دیگری رو امتحان کن.';
+		el('selectedDetail').innerHTML = '<h4>گزینه‌ای پیدا نشد</h4><p>زمان، تاریخ یا مدت رزرو رو تغییر بده تا نقشه دوباره بررسی بشه.</p>';
+	}
+}
+
+async function runAvailabilitySearch() {
+	// شماره‌ی درخواست: اگه پاسخ قدیمی‌تر دیرتر برسه، نادیده گرفته می‌شه
+	const seq = ++state.searchSeq;
+	try {
+		const data = await api(`/api/availability?${buildAvailabilityParams()}`);
+		if (seq !== state.searchSeq) return;
+		state.availability = data;
+		state.hasSearched = true;
+		applyAvailabilityResult();
+	} catch (error) {
+		if (seq !== state.searchSeq) return;
+		el('searchNotice').className = 'notice danger';
+		el('searchNotice').textContent = error.message;
+	}
+}
+
 function invalidateAvailability() {
 	clearSelection();
+
+	// بعد از اولین جستجو، تغییر شرایط باعث به‌روزرسانی زنده می‌شه نه پاک‌شدن نتایج.
+	// تأخیر کوتاه لازمه وگرنه هر کلیک روی +/− یه درخواست جدا می‌فرسته.
+	if (state.hasSearched) {
+		el('searchNotice').className = 'notice';
+		el('searchNotice').textContent = 'در حال به‌روزرسانی...';
+		clearTimeout(liveSearchTimer);
+		liveSearchTimer = setTimeout(runAvailabilitySearch, 400);
+		return;
+	}
+
 	state.availability = null;
 	renderMap();
 	renderCombos();
 	el('searchNotice').className = 'notice warn';
-	el('searchNotice').textContent = 'شرایط جستجو تغییر کرد؛ دکمه‌ی بررسی میزها رو بزن.';
-	el('selectedDetail').innerHTML = '<h4>نیاز به بررسی دوباره</h4><p>برای دیدن میزهای آزاد این شرایط، دوباره جستجو کن.</p>';
+	el('searchNotice').textContent = 'شرایط جستجو رو انتخاب کن و دکمه‌ی بررسی میزها رو بزن.';
+	el('selectedDetail').innerHTML = '<h4>هنوز جستجو نشده</h4><p>برای دیدن میزهای آزاد، دکمه‌ی بررسی میزها رو بزن.</p>';
 }
 
 /* ---------- guest stepper ---------- */
@@ -116,7 +175,9 @@ function selectSingleTable(table) {
 	if (!table.availability?.available) {
 		el('selectedDetail').innerHTML = detailCard(`میز ${table.displayNumber}`, [
 			ZONE_FA[table.zone] || table.zone,
-			table.availability?.reason || 'این میز در حال حاضر قابل رزرو نیست.',
+			table.availability
+				? table.availability.reason || 'این میز در حال حاضر قابل رزرو نیست.'
+				: 'برای دیدن وضعیت این میز، اول دکمه‌ی بررسی میزها رو بزن.',
 		]);
 		sheet.open();
 		return;
@@ -225,30 +286,10 @@ function selectedStartTime() {
 el('searchForm').addEventListener('submit', async (event) => {
 	event.preventDefault();
 	clearSelection();
-	try {
-		el('searchNotice').className = 'notice';
-		el('searchNotice').textContent = 'در حال بررسی میزها...';
-		state.availability = await api(`/api/availability?${buildAvailabilityParams()}`);
-		renderMap();
-		renderCombos();
-
-		const availableTables = state.availability?.tables || [];
-		const availableCombos = state.availability?.combos || [];
-		const availableCount = availableTables.filter((table) => table.availability?.available).length;
-		if (availableCount || availableCombos.length) {
-			el('searchNotice').className = 'notice ok';
-			el('searchNotice').textContent =
-				state.availability.exactMissingMessage || `${availableCount.toLocaleString('fa-IR')} میز مناسب روی نقشه روشن شد.`;
-			el('selectedDetail').innerHTML = '<h4>میزی انتخاب نشده</h4><p>روی یک میز روشن ضربه بزن تا جزئیاتش رو ببینی.</p>';
-		} else {
-			el('searchNotice').className = 'notice warn';
-			el('searchNotice').textContent = 'برای این ترکیب زمان و تعداد نفرات، میز آزادی پیدا نشد. زمان یا تاریخ نزدیک دیگری رو امتحان کن.';
-			el('selectedDetail').innerHTML = '<h4>گزینه‌ای پیدا نشد</h4><p>زمان، تاریخ یا مدت رزرو رو تغییر بده تا نقشه دوباره بررسی بشه.</p>';
-		}
-	} catch (error) {
-		el('searchNotice').className = 'notice danger';
-		el('searchNotice').textContent = error.message;
-	}
+	el('searchNotice').className = 'notice';
+	el('searchNotice').textContent = 'در حال بررسی میزها...';
+	clearTimeout(liveSearchTimer);
+	await runAvailabilitySearch();
 });
 
 el('reserveForm').addEventListener('submit', async (event) => {
@@ -309,17 +350,21 @@ async function init() {
 		state.currentUser = null;
 	}
 
+	// در اولین لود فقط چیدمان میزها گرفته می‌شه، نه وضعیت آزاد/پر —
+	// تا قبل از زدن دکمه‌ی بررسی، همه‌ی میزها نچرال بمونن
 	try {
-		state.availability = await api(`/api/availability?${buildAvailabilityParams()}`);
+		const initial = await api(`/api/availability?${buildAvailabilityParams()}`);
+		state.knownTables = initial.tables || [];
 	} catch (error) {
-		state.availability = { tables: [], combos: [] };
+		state.knownTables = [];
 		el('searchNotice').className = 'notice warn';
-		el('searchNotice').textContent = `بررسی اولیه‌ی میزها انجام نشد (${error.message}). دکمه‌ی بررسی میزها رو بزن.`;
+		el('searchNotice').textContent = `بارگذاری چیدمان میزها انجام نشد (${error.message}).`;
 	}
+	state.availability = null;
 
 	renderMap();
 	renderCombos();
-	el('selectedDetail').innerHTML = '<h4>میزی انتخاب نشده</h4><p>بعد از بررسی زمان، روی یکی از میزهای روشن ضربه بزن.</p>';
+	el('selectedDetail').innerHTML = '<h4>هنوز جستجو نشده</h4><p>تاریخ، تعداد نفرات و ساعت رو انتخاب کن و دکمه‌ی بررسی میزها رو بزن.</p>';
 }
 
 init().catch((error) => {

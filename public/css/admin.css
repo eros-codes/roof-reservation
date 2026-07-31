@@ -1,5 +1,52 @@
 /* admin.html — پنل ادمین — استایل اختصاصی همین صفحه. هیچ فایل دیگری این کلاس‌ها را تعریف نمی‌کند. */
 
+.report-card {
+	grid-column: 1 / -1;
+	background: #fff;
+	border: 1px solid #eee6dc;
+	border-radius: 16px;
+	padding: 18px;
+	margin-top: 12px;
+}
+
+.report-card h4 {
+	margin: 0 0 14px;
+	font-size: 14px;
+	color: #1a2e54;
+}
+
+.chart-wrap {
+	display: flex;
+	align-items: flex-end;
+	gap: 10px;
+	height: 160px;
+	padding-top: 8px;
+}
+
+.chart-col {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: flex-end;
+	height: 100%;
+	gap: 6px;
+}
+
+.chart-bar {
+	width: 100%;
+	max-width: 46px;
+	border-radius: 8px 8px 3px 3px;
+	background: linear-gradient(to top, #1a2e54, #4c527c);
+	transition: height 0.35s ease;
+}
+
+.chart-label {
+	font-size: 11px;
+	color: #6b7280;
+	white-space: nowrap;
+}
+
 /* ===== منتقل‌شده از shared.css / map.css (فقط قوانینی که این صفحه واقعاً استفاده می‌کند) ===== */
 
 .topbar {

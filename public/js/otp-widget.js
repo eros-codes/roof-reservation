@@ -29,23 +29,47 @@ export function mountOtpWidget(container, { purpose, extraFields = [], submitLab
 		return Object.fromEntries(extraFields.map((f) => [f.key, q(`[data-otp-extra="${f.key}"]`).value.trim()]));
 	}
 	const SEND_LABEL = 'ارسال کد تایید';
+	const COOLDOWN_SECONDS = 60;
+	// زمان پایان شمارش در مرورگر ذخیره می‌شه تا با رفرش صفحه از بین نره
+	const cooldownStorageKey = () => `otpCooldown:${purpose}:${q('[data-otp-phone]').value.trim()}`;
 
-	function startResendCooldown(btn) {
-		let remaining = 60;
+	function runCooldown(btn, endsAt) {
 		clearInterval(cooldownTimer);
-		btn.disabled = true;
-		btn.textContent = `ارسال مجدد (${remaining.toLocaleString('fa-IR')})`;
-		cooldownTimer = setInterval(() => {
-			remaining -= 1;
+		const tick = () => {
+			const remaining = Math.ceil((endsAt - Date.now()) / 1000);
 			if (remaining <= 0) {
 				clearInterval(cooldownTimer);
 				cooldownTimer = null;
 				btn.disabled = false;
 				btn.textContent = SEND_LABEL;
+				try {
+					localStorage.removeItem(cooldownStorageKey());
+				} catch (_) {}
 				return;
 			}
+			btn.disabled = true;
 			btn.textContent = `ارسال مجدد (${remaining.toLocaleString('fa-IR')})`;
-		}, 1000);
+		};
+		tick();
+		cooldownTimer = setInterval(tick, 1000);
+	}
+
+	function startResendCooldown(btn) {
+		const endsAt = Date.now() + COOLDOWN_SECONDS * 1000;
+		try {
+			localStorage.setItem(cooldownStorageKey(), String(endsAt));
+		} catch (_) {}
+		runCooldown(btn, endsAt);
+	}
+
+	// اگر کاربر وسط شمارش صفحه را رفرش کرده باشد، شمارش از همان‌جا ادامه پیدا می‌کند
+	function restoreCooldown() {
+		const btn = q('[data-otp-send]');
+		let stored = null;
+		try {
+			stored = localStorage.getItem(cooldownStorageKey());
+		} catch (_) {}
+		if (stored && Number(stored) > Date.now()) runCooldown(btn, Number(stored));
 	}
 
 	q('[data-otp-send]').addEventListener('click', async () => {
@@ -95,4 +119,8 @@ export function mountOtpWidget(container, { purpose, extraFields = [], submitLab
 			btn.disabled = false;
 		}
 	});
+
+	// شماره ممکنه از قبل پر شده باشه؛ با هر تغییرش وضعیت شمارش دوباره بررسی می‌شه
+	q('[data-otp-phone]').addEventListener('input', restoreCooldown);
+	restoreCooldown();
 }

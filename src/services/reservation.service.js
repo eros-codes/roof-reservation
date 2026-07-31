@@ -3,6 +3,7 @@ import { addMinutes, combineDateAndTime, generateInvoiceNumber, generateTracking
 import { getSettings, numberSetting } from './settings.service.js';
 import { assertTablesAvailable } from './availability.service.js';
 import { sendMockSms } from '../lib/sms.js';
+import { config } from '../config.js';
 
 async function uniqueTrackingCode(client) {
 	for (let i = 0; i < 10; i++) {

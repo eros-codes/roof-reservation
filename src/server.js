@@ -29,7 +29,7 @@ app.use(
 				scriptSrc: ["'self'"],
 				// 'unsafe-inline' فقط برای style لازمه چون کد از style="..." درون‌خطی استفاده می‌کنه
 				styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-				fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+				fontSrc: ["'self'", 'data:', 'https://fonts.googleapis.com', 'https://fonts.gstatic.com'],
 				imgSrc: ["'self'", 'data:'],
 				connectSrc: ["'self'"],
 				objectSrc: ["'none'"],

@@ -46,7 +46,7 @@ const STATUS_FA = {
 	CONFIRMED: 'تایید شده',
 	CHANGE_PENDING: 'در انتظار تغییر',
 	CANCELLED: 'لغو شده',
-	COMPLETED: 'انجام شده',
+	COMPLETED: 'تکمیل‌شده',
 	NO_SHOW: 'عدم حضور',
 	EXPIRED: 'منقضی شده',
 };
