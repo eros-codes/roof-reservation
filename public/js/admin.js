@@ -118,6 +118,8 @@ let allReservations = [];
 let reservationsTotal = 0;
 
 async function loadReservations({ append = false } = {}) {
+	// تعداد رزروهایی که ادمین قبلاً باز کرده بود، تا بعد از تازه‌سازی به صفحه‌ی اول پرت نشه
+	const previousCount = allReservations.length;
 	if (!append) {
 		el('reservationBox').innerHTML = '<div class="skeleton" style="height:180px"></div>';
 		allReservations = [];
@@ -125,7 +127,9 @@ async function loadReservations({ append = false } = {}) {
 	let reservations;
 	let total;
 	try {
-		({ reservations, total } = await api(`/api/admin/reservations?limit=100&offset=${allReservations.length}`));
+		// سقف سمت سرور ۲۰۰ است، پس بیشتر از آن قابل بازیابی نیست
+		const limit = append ? 100 : Math.min(Math.max(previousCount, 100), 200);
+		({ reservations, total } = await api(`/api/admin/reservations?limit=${limit}&offset=${allReservations.length}`));
 	} catch (error) {
 		el('reservationBox').innerHTML = '<div class="notice danger"></div>';
 		el('reservationBox').querySelector('.notice').textContent = error.message;

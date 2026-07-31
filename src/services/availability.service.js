@@ -208,15 +208,19 @@ function comboAvailabilityForStart({
 	workingHoursByDay,
 	dayClosures,
 	bufferMinutes: precomputedBuffer = null,
+	check: precomputedCheck = null,
 }) {
 	const [a, b] = tables;
-	const check = validateTimeWindow({
-		date,
-		startTime,
-		durationMinutes,
-		settings,
-		workingHoursByDay,
-	});
+	// نتیجه‌ی این بررسی به میزها بستگی ندارد؛ اگر از بیرون داده شده باشد دوباره حساب نمی‌شود
+	const check =
+		precomputedCheck ||
+		validateTimeWindow({
+			date,
+			startTime,
+			durationMinutes,
+			settings,
+			workingHoursByDay,
+		});
 	if (!check.ok) return null;
 	if (!a.isActive || !b.isActive) return null;
 	const combinedMax = a.maxGuests + b.maxGuests;
@@ -339,6 +343,7 @@ export async function getAvailability({ date, guestCount, durationMinutes, start
 				workingHoursByDay,
 				dayClosures,
 				bufferMinutes,
+				check: slotChecks.get(slot),
 			});
 			if (combo) {
 				combos.push(combo);

@@ -17,6 +17,11 @@ export async function api(path, options = {}) {
 	if (!res.ok) {
 		const error = new Error(data.message || 'خطا در ارتباط با سرور');
 		error.status = res.status;
+		// نشست ادمین منقضی شده: در هر نقطه‌ای از پنل باید به صفحه‌ی ورود برگرده.
+		// مسیر خودِ login استثناست، وگرنه رمز اشتباه باعث حلقه‌ی بی‌پایان ریدایرکت می‌شود.
+		if (res.status === 401 && path.startsWith('/api/admin') && !path.endsWith('/login')) {
+			location.href = '/admin-login.html';
+		}
 		throw error;
 	}
 	return data;

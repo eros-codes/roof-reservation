@@ -62,7 +62,14 @@ authRouter.post('/otp/send', otpSendLimiter, async (req, res, next) => {
 				},
 			})
 			.catch((error) => console.error('پاک‌سازی کدهای قدیمی ناموفق بود:', error));
-		await sendMockSms({ phone, type: 'OTP', message: otpMessage(code) });
+		try {
+			await sendMockSms({ phone, type: 'OTP', message: otpMessage(code) });
+		} catch (smsError) {
+			// کد ساخته شده ولی ارسال نشده؛ پاکش می‌کنیم تا تلاش بعدی کاربر تمیز باشد
+			console.error('ارسال کد تایید ناموفق بود:', smsError);
+			await prisma.otpCode.deleteMany({ where: { phone, purpose, consumedAt: null } }).catch(() => {});
+			return res.status(503).json({ message: 'ارسال پیامک در حال حاضر ممکن نیست؛ کمی بعد دوباره تلاش کن.' });
+		}
 		res.json({
 			message: 'کد تایید ارسال شد.',
 		});

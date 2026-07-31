@@ -1,7 +1,11 @@
 import { api } from './api.js';
 import { escapeHtml } from './ui.js';
 
+// بیرون از تابع تا با mount دوباره‌ی ویجت، تایمر قبلی هم واقعاً لغو بشه
+let cooldownTimer = null;
+
 export function mountOtpWidget(container, { purpose, extraFields = [], submitLabel = 'تایید', onVerified }) {
+	clearInterval(cooldownTimer);
 	container.innerHTML = `
     <div class="form-grid otp-widget">
       ${extraFields.map((f) => `<div class="field"><label>${escapeHtml(f.label)}${f.required ? ' *' : ''}</label><input data-otp-extra="${escapeHtml(f.key)}" placeholder="${escapeHtml(f.placeholder || '')}"></div>`).join('')}
@@ -24,8 +28,6 @@ export function mountOtpWidget(container, { purpose, extraFields = [], submitLab
 	function extraPayload() {
 		return Object.fromEntries(extraFields.map((f) => [f.key, q(`[data-otp-extra="${f.key}"]`).value.trim()]));
 	}
-
-	let cooldownTimer = null;
 	const SEND_LABEL = 'ارسال کد تایید';
 
 	function startResendCooldown(btn) {

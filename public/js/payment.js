@@ -55,7 +55,7 @@ function renderSuccess() {
 
     </div>`;
 	setTimeout(() => {
-		location.href = `/invoice.html?id=${reservation.id}`;
+		location.href = `/invoice.html?id=${encodeURIComponent(reservation.id)}`;
 	}, 1400);
 }
 
@@ -109,7 +109,17 @@ function render() {
 	// دکمه اول وصل می‌شود: اگر تایمر در همان لحظه منقضی باشد، onExpire محتوای
 	// box را عوض می‌کند و دیگر payBtn وجود ندارد
 	document.getElementById('payBtn').addEventListener('click', pay);
-	if (holdActive) ring = mountHoldRing(document.getElementById('ringMount'), reservation.holdExpiresAt, { onExpire: renderExpired });
+	if (holdActive) {
+		// کل مهلت نگه‌داری از فاصله‌ی ساخت رزرو تا انقضا حساب می‌شه، وگرنه
+		// حلقه بعد از هر رفرش دوباره از صد درصد شروع می‌کنه
+		const holdTotalSeconds = reservation.createdAt
+			? Math.max(1, Math.round((new Date(reservation.holdExpiresAt) - new Date(reservation.createdAt)) / 1000))
+			: undefined;
+		ring = mountHoldRing(document.getElementById('ringMount'), reservation.holdExpiresAt, {
+			totalSeconds: holdTotalSeconds,
+			onExpire: renderExpired,
+		});
+	}
 }
 
 async function pay() {
@@ -137,7 +147,7 @@ async function init() {
 	// اصلاً تلاش دوباره‌ای اتفاق نیفتاده.
 	const currentResult = resultParam;
 	resultParam = null;
-	if (currentResult) history.replaceState(null, '', `${location.pathname}?id=${id}`);
+	if (currentResult) history.replaceState(null, '', `${location.pathname}?id=${encodeURIComponent(id)}`);
 
 	// برگشت از درگاه زرین‌پال - بک‌اند خودش تو callback همه‌چیو verify و ثبت کرده
 	if (currentResult === 'success' || reservation.status === 'CONFIRMED') return renderSuccess();

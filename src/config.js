@@ -17,16 +17,26 @@ if (isProd && process.env.SMS_MODE === 'console') {
 if (isProd && !process.env.DATABASE_URL) {
 	throw new Error('DATABASE_URL باید در production تنظیم شود.');
 }
+if (isProd && !process.env.APP_URL) {
+	throw new Error(
+		'APP_URL باید در production تنظیم شود؛ وگرنه آدرس بازگشت از درگاه پرداخت به localhost اشاره می‌کند و پرداخت‌ها هرگز تایید نمی‌شوند.',
+	);
+}
+if (isProd && process.env.APP_URL?.startsWith('http://')) {
+	console.warn('⚠️  هشدار: APP_URL روی http تنظیم شده؛ برای درگاه پرداخت و کوکی‌های secure باید https باشد.');
+}
 // حتی خارج از production هم اگه از کلید پیش‌فرض استفاده می‌شه، باید واضح دیده بشه
 if (!process.env.JWT_SECRET || !process.env.ADMIN_JWT_SECRET) {
 	console.warn('⚠️  هشدار: کلیدهای JWT پیش‌فرض در حال استفاده‌اند. این حالت فقط برای توسعه‌ی محلی امنه.');
 }
-if (process.env.JWT_SECRET && process.env.JWT_SECRET.length < 32) {
-	console.warn('⚠️  هشدار: JWT_SECRET کوتاه‌تر از ۳۲ کاراکتره و به‌راحتی قابل حدس زدنه.');
+for (const key of ['JWT_SECRET', 'ADMIN_JWT_SECRET']) {
+	if (process.env[key] && process.env[key].length < 32) {
+		console.warn(`⚠️  هشدار: ${key} کوتاه‌تر از ۳۲ کاراکتره و به‌راحتی قابل حدس زدنه.`);
+	}
 }
 
 export const config = {
-		port: Number.isInteger(Number(process.env.PORT)) && Number(process.env.PORT) > 0 ? Number(process.env.PORT) : 3000,
+	port: Number.isInteger(Number(process.env.PORT)) && Number(process.env.PORT) > 0 ? Number(process.env.PORT) : 3000,
 	nodeEnv: process.env.NODE_ENV || 'development',
 	appUrl: process.env.APP_URL || 'http://localhost:3000',
 	jwtSecret: process.env.JWT_SECRET || 'dev-user-secret-change-me',

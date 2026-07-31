@@ -3,6 +3,10 @@ import { api } from './api.js';
 const btn = document.getElementById('login');
 const notice = document.getElementById('notice');
 const passwordInput = document.getElementById('password');
+const emailInput = document.getElementById('email');
+if (!btn || !notice || !passwordInput || !emailInput) {
+	console.error('ساختار صفحه‌ی ورود ادمین ناقصه؛ یکی از فیلدهای لازم پیدا نشد.');
+}
 if (passwordInput) {
 	passwordInput.addEventListener('keydown', (event) => {
 		if (event.key === 'Enter') btn?.click();
@@ -11,8 +15,8 @@ if (passwordInput) {
 
 if (btn) {
 	btn.addEventListener('click', async () => {
-		const email = document.getElementById('email').value.trim();
-		const password = document.getElementById('password').value;
+		const email = emailInput.value.trim();
+		const password = passwordInput.value;
 		if (!email || !password) {
 			notice.className = 'notice danger';
 			notice.textContent = 'ایمیل و رمز عبور رو وارد کن.';

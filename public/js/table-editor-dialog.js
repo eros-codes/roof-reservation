@@ -664,6 +664,11 @@ export function mountTableEditorDialog({ onSaved, onDeleted, getConnections, get
 			notice.textContent = 'حداقل یک صندلی لازمه.';
 			return;
 		}
+		if (mode === 'edit' && !field('displayNumber').value.trim()) {
+			notice.className = 'notice danger';
+			notice.textContent = 'شماره‌ی نمایشی میز نمی‌تونه خالی باشه.';
+			return;
+		}
 		const body = {
 			zone: field('zone').value,
 			shape: field('shape').value,
@@ -676,6 +681,11 @@ export function mountTableEditorDialog({ onSaved, onDeleted, getConnections, get
 			capacity: chairs.length,
 			chairs: chairs.map(({ id, ...rest }) => rest),
 		};
+		if (!Number.isInteger(body.minGuests) || body.minGuests < 1 || !Number.isInteger(body.maxGuests) || body.maxGuests < 1) {
+			notice.className = 'notice danger';
+			notice.textContent = 'حداقل و حداکثر نفرات باید عددی صحیح و بزرگ‌تر از صفر باشن.';
+			return;
+		}
 		if (body.minGuests > body.maxGuests) {
 			notice.className = 'notice danger';
 			notice.textContent = 'حداقل نفرات نمی‌تونه از حداکثر بیشتر باشه.';

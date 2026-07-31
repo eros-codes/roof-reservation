@@ -24,7 +24,7 @@ adminRouter.get('/dashboard', async (_req, res, next) => {
 			prisma.reservation.count({ where: { startAt: { gte: start, lt: end }, status: { in: ['CONFIRMED', 'COMPLETED'] } } }),
 			prisma.reservation.count({ where: { status: { in: ['HOLD', 'PAYMENT_PENDING', 'PAYMENT_REVIEW'] } } }),
 			prisma.reservation.count({ where: { status: 'NO_SHOW' } }),
-			prisma.payment.aggregate({ where: { status: 'PAID' }, _sum: { amount: true } }),
+			prisma.payment.aggregate({ where: { status: 'PAID', isMock: false }, _sum: { amount: true } }),
 		]);
 		res.json({ todayReservations, pendingPayments, noShows, totalRevenue: revenue._sum.amount || 0 });
 	} catch (error) {
@@ -121,18 +121,36 @@ adminRouter.patch('/reservations/:id/status', async (req, res, next) => {
 		if (!ADMIN_SETTABLE_STATUSES.includes(req.body.status)) {
 			return res.status(400).json({ message: 'این وضعیت از پنل ادمین قابل تنظیم نیست.' });
 		}
+		const existing = await prisma.reservation.findUnique({
+			where: { id: req.params.id },
+			include: { payments: { where: { status: 'PAID', isMock: false } } },
+		});
+		if (!existing) return res.status(404).json({ message: 'رزرو پیدا نشد.' });
+
+		// اگر مشتری واقعاً پولی پرداخت کرده، لغو باید بدهی بازگشت وجه را ثبت کند
+		const owesRefund = req.body.status === 'CANCELLED' && existing.payments.length > 0;
+
 		const reservation = await prisma.reservation.update({
 			where: { id: req.params.id },
 			data: {
 				status: req.body.status,
 				notes: req.body.notes || undefined,
+				...(owesRefund ? { refundStatus: 'PENDING' } : {}),
 			},
 		});
+		if (owesRefund) {
+			await prisma.payment.updateMany({
+				where: { reservationId: reservation.id, status: 'PAID', isMock: false },
+				data: { status: 'REFUND_PENDING' },
+			});
+		}
 		if (req.body.status === 'CANCELLED') {
 			await sendMockSms({
 				phone: reservation.customerPhone,
 				type: 'CANCELLATION',
-				message: `رزرو ${reservation.trackingCode} لغو شد.`,
+				message: owesRefund
+					? `رزرو ${reservation.trackingCode} لغو شد. برای بازگشت وجه با مجموعه تماس بگیرید.`
+					: `رزرو ${reservation.trackingCode} لغو شد.`,
 			}).catch((e) => console.error('SMS لغو ارسال نشد:', e));
 		}
 		res.json({ reservation });
@@ -144,8 +162,10 @@ adminRouter.patch('/reservations/:id/status', async (req, res, next) => {
 
 adminRouter.get('/tables', async (_req, res, next) => {
 	try {
-		const tables = await prisma.cafeTable.findMany({ orderBy: { code: 'asc' } });
-		const connections = await prisma.tableConnection.findMany();
+		const [tables, connections] = await Promise.all([
+			prisma.cafeTable.findMany({ orderBy: { code: 'asc' } }),
+			prisma.tableConnection.findMany(),
+		]);
 		res.json({ tables, connections });
 	} catch (error) {
 		next(error);
@@ -213,6 +233,11 @@ adminRouter.patch('/tables/:id', requireRole('OWNER', 'MANAGER'), async (req, re
 			if (data[key] !== undefined) data[key] = Number(data[key]);
 		}
 
+		for (const key of ['minGuests', 'maxGuests', 'capacity']) {
+			if (data[key] !== undefined && (!Number.isInteger(data[key]) || data[key] < 1)) {
+				return res.status(400).json({ message: `مقدار «${key}» باید عددی صحیح و بزرگ‌تر از صفر باشد.` });
+			}
+		}
 		if (data.minGuests !== undefined && data.maxGuests !== undefined && data.minGuests > data.maxGuests) {
 			return res.status(400).json({ message: 'حداقل نفر نمی‌تواند از حداکثر بیشتر باشد.' });
 		}
@@ -281,24 +306,26 @@ adminRouter.get('/settings', async (_req, res, next) => {
 	}
 });
 
-const POSITIVE_NUMBER_SETTINGS = [
-	'slotIntervalMinutes',
-	'minDurationMinutes',
-	'maxDurationMinutes',
-	'reservationWindowDays',
-	'holdMinutes',
-	'pricePerGuest',
-];
+// هر تنظیم علاوه بر کف، سقف منطقی هم دارد تا یک اشتباه تایپی
+// (مثلاً یک صفر اضافه) میزها را برای روزها قفل نکند
+const NUMBER_SETTING_BOUNDS = {
+	slotIntervalMinutes: { min: 5, max: 120 },
+	minDurationMinutes: { min: 15, max: 720 },
+	maxDurationMinutes: { min: 15, max: 720 },
+	reservationWindowDays: { min: 1, max: 365 },
+	holdMinutes: { min: 1, max: 120 },
+	pricePerGuest: { min: 1, max: 100000000 },
+};
 
 adminRouter.patch('/settings', requireRole('OWNER', 'MANAGER'), async (req, res, next) => {
 	try {
 		const updates = Object.entries(req.body || {});
 		for (const [key, value] of updates) {
-			if (POSITIVE_NUMBER_SETTINGS.includes(key)) {
-				const n = Number(value);
-				if (!Number.isFinite(n) || n <= 0) {
-					return res.status(400).json({ message: `مقدار «${key}» باید عددی بزرگ‌تر از صفر باشد.` });
-				}
+			const bounds = NUMBER_SETTING_BOUNDS[key];
+			if (!bounds) continue;
+			const n = Number(value);
+			if (!Number.isFinite(n) || n < bounds.min || n > bounds.max) {
+				return res.status(400).json({ message: `مقدار «${key}» باید عددی بین ${bounds.min} و ${bounds.max} باشد.` });
 			}
 		}
 		for (const [key, value] of updates) await setSetting(key, value);

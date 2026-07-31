@@ -89,7 +89,12 @@ const server = app.listen(config.port, () => {
 	console.log(`NODE_ENV=${config.nodeEnv} → کوکی‌ها secure=${config.isProd} (روی http فقط با secure=false کار می‌کنن)`);
 });
 
+let shuttingDown = false;
+
 async function shutdown(signal) {
+	if (shuttingDown) return;
+	shuttingDown = true;
+	clearInterval(holdCleanup);
 	console.log(`${signal} دریافت شد؛ در حال بستن امنِ سرور...`);
 	server.close(async () => {
 		await prisma.$disconnect();

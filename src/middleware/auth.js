@@ -25,10 +25,17 @@ export async function optionalUser(req, _res, next) {
 }
 
 export async function requireUser(req, res, next) {
+	const token = req.cookies?.userToken;
+	if (!token) return res.status(401).json({ message: 'لطفاً وارد حساب شوید.' });
+
+	let payload;
 	try {
-		const token = req.cookies?.userToken;
-		if (!token) return res.status(401).json({ message: 'لطفاً وارد حساب شوید.' });
-		const payload = verifyUserToken(token);
+		payload = verifyUserToken(token);
+	} catch (_) {
+		return res.status(401).json({ message: 'نشست کاربری نامعتبر است.' });
+	}
+
+	try {
 		const user = await prisma.user.findUnique({ where: { id: payload.sub } });
 		if (!user) return res.status(401).json({ message: 'کاربر پیدا نشد.' });
 		if (user.isActive === false) return res.status(403).json({ message: 'حساب کاربری غیرفعال شده است.' });
@@ -36,21 +43,31 @@ export async function requireUser(req, res, next) {
 		req.user = user;
 		next();
 	} catch (error) {
-		res.status(401).json({ message: 'نشست کاربری نامعتبر است.' });
+		// خطای دیتابیس نباید به «نشست نامعتبر» ترجمه بشه، وگرنه کاربر بی‌دلیل بیرون می‌افته
+		console.error('requireUser: خواندن کاربر از دیتابیس ناموفق بود', error);
+		res.status(503).json({ message: 'سرویس موقتاً در دسترس نیست؛ کمی بعد دوباره تلاش کن.' });
 	}
 }
 
 export async function requireAdmin(req, res, next) {
+	const token = req.cookies?.adminToken;
+	if (!token) return res.status(401).json({ message: 'ورود ادمین لازم است.' });
+
+	let payload;
 	try {
-		const token = req.cookies?.adminToken;
-		if (!token) return res.status(401).json({ message: 'ورود ادمین لازم است.' });
-		const payload = verifyAdminToken(token);
+		payload = verifyAdminToken(token);
+	} catch (_) {
+		return res.status(401).json({ message: 'نشست ادمین نامعتبر است.' });
+	}
+
+	try {
 		const admin = await prisma.adminUser.findUnique({ where: { id: payload.sub } });
 		if (!admin || !admin.isActive) return res.status(401).json({ message: 'ادمین فعال نیست.' });
 		req.admin = admin;
 		next();
 	} catch (error) {
-		res.status(401).json({ message: 'نشست ادمین نامعتبر است.' });
+		console.error('requireAdmin: خواندن ادمین از دیتابیس ناموفق بود', error);
+		res.status(503).json({ message: 'سرویس موقتاً در دسترس نیست؛ کمی بعد دوباره تلاش کن.' });
 	}
 }
 

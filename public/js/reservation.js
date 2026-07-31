@@ -79,6 +79,8 @@ function renderDates() {
 
 /* ---------- exact / range mode ---------- */
 function setMode(mode) {
+	// اگر همان حالت فعلی دوباره انتخاب شود، نباید نتایج جستجو دور ریخته شود
+	if (state.mode === mode) return;
 	state.mode = mode;
 	document.querySelectorAll('.mode-tabs button').forEach((button) => {
 		button.classList.toggle('active', button.dataset.mode === mode);
@@ -230,8 +232,10 @@ el('searchForm').addEventListener('submit', async (event) => {
 		renderMap();
 		renderCombos();
 
-		const availableCount = state.availability.tables.filter((table) => table.availability?.available).length;
-		if (availableCount || state.availability.combos.length) {
+		const availableTables = state.availability?.tables || [];
+		const availableCombos = state.availability?.combos || [];
+		const availableCount = availableTables.filter((table) => table.availability?.available).length;
+		if (availableCount || availableCombos.length) {
 			el('searchNotice').className = 'notice ok';
 			el('searchNotice').textContent =
 				state.availability.exactMissingMessage || `${availableCount.toLocaleString('fa-IR')} میز مناسب روی نقشه روشن شد.`;
@@ -264,7 +268,7 @@ el('reserveForm').addEventListener('submit', async (event) => {
 			customerPhone: el('customerPhone').value.trim(),
 		};
 		const { reservation } = await api('/api/reservations/hold', { method: 'POST', body });
-		window.location.href = `/payment.html?id=${reservation.id}`;
+		window.location.href = `/payment.html?id=${encodeURIComponent(reservation.id)}`;
 	} catch (error) {
 		submitButton.disabled = false;
 		el('modalSummary').className = 'notice danger';

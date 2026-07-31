@@ -14,6 +14,10 @@ const PAYMENT_STATUS_FA = {
 	REFUND_PENDING: 'در انتظار بازگشت وجه',
 	REFUNDED: 'بازگشت داده شده',
 };
+const REFUND_STATUS_FA = {
+	PENDING: 'در انتظار بازگشت به شما',
+	DONE: 'بازگشت داده شد',
+};
 
 async function init() {
 	if (!id) throw new Error('شناسه فاکتور در آدرس پیدا نشد.');
@@ -42,6 +46,7 @@ async function init() {
     ${row('قیمت هر نفر', toman(reservation.pricePerGuest))}
     ${row('وضعیت پرداخت', payment.status ? PAYMENT_STATUS_FA[payment.status] || payment.status : '—')}
     ${payment.refId ? row('کد پیگیری پرداخت', payment.refId) : ''}
+    ${reservation.refundStatus && reservation.refundStatus !== 'NONE' ? row('وضعیت بازگشت وجه', REFUND_STATUS_FA[reservation.refundStatus] || reservation.refundStatus) : ''}
 
     <div class="amount-row"><span>مبلغ کل</span><strong>${toman(reservation.totalAmount)}</strong></div>
 
