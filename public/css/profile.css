@@ -98,12 +98,13 @@
 .ghost-btn {
 	font-size: 13px;
 	font-weight: 500;
-	color: var(--rich-sabel);
-	opacity: 0.6;
+	color: white !important;
+	background-color: var(--rich-sabel) !important;
+	opacity: 0.9;
 	position: relative;
 	padding: 0;
 	background: none;
-	transition: opacity 0.2s ease;
+	transition: opacity 0.9s ease;
 	padding: 10px 20px;
 	border: 1px solid var(--burnt-oak);
 	border-radius: 8px;
