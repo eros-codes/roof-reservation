@@ -33,7 +33,7 @@ let nextChairId = 1;
  * رو نقشه‌ی اصلی با درگ تعیین می‌شه (اونجا هم فوری ذخیره می‌شه، نیازی به این
  * دیالوگ نداره). دابل‌کلیک رو میز = این دیالوگ تو حالت ویرایش، شامل حذف.
  */
-export function mountTableEditorDialog({ onSaved, onDeleted, getConnections, getAllTables }) {
+export function mountTableEditorDialog({ onSaved, onDeleted, getConnections, getAllTables, onConnectionsChanged }) {
 	let mode = 'create';
 	let editingTable = null;
 	let chairs = [];
@@ -231,6 +231,37 @@ export function mountTableEditorDialog({ onSaved, onDeleted, getConnections, get
 		);
 	}
 
+	// همون جوی‌استیک میز، ولی برای صندلی: کوچیک‌تر و با گام ۵ درجه
+	function buildChairRotationField(chair) {
+		const start = normalizeAngle(chair.angle || 0);
+		const numberInput = el('input', {
+			type: 'number',
+			step: '5',
+			value: start,
+		});
+		const dial = buildRotationDial((angle) => {
+			// به نزدیک‌ترین مضرب ۵ گرد می‌شه تا با گام فیلد عددی یکی باشه
+			const snapped = normalizeAngle(Math.round(angle / 5) * 5);
+			updateRotationDial(dial, snapped);
+			numberInput.value = snapped;
+			chair.angle = snapped;
+			renderCanvas();
+		});
+		updateRotationDial(dial, start);
+		numberInput.addEventListener('input', () => {
+			const angle = normalizeAngle(Number(numberInput.value) || 0);
+			updateRotationDial(dial, angle);
+			chair.angle = angle;
+			renderCanvas();
+		});
+		return el(
+			'div',
+			{ class: 'field rotation-field rotation-field--chair' },
+			el('label', {}, 'زاویه صندلی'),
+			el('div', { class: 'rotation-field-row' }, dial, numberInput),
+		);
+	}
+
 	let canvasSvg;
 	function renderCanvas() {
 		if (!canvasSvg) return;
@@ -334,20 +365,7 @@ export function mountTableEditorDialog({ onSaved, onDeleted, getConnections, get
 						),
 					),
 				),
-				el(
-					'div',
-					{ class: 'field' },
-					el('label', {}, 'زاویه'),
-					el('input', {
-						type: 'number',
-						step: '5',
-						value: chair.angle || 0,
-						oninput: (e) => {
-							chair.angle = Number(e.target.value) || 0;
-							renderCanvas();
-						},
-					}),
-				),
+				buildChairRotationField(chair),
 			),
 			el(
 				'button',
@@ -374,9 +392,25 @@ export function mountTableEditorDialog({ onSaved, onDeleted, getConnections, get
 			host.innerHTML = '<p class="dialog-hint">اتصال میزها بعد از ذخیره‌ی اولیه، از همین دیالوگ قابل تنظیمه.</p>';
 			return;
 		}
-		const [allTables, connections] = await Promise.all([getAllTables(), getConnections()]);
+
+		// همیشه از سرور خونده می‌شه؛ کش والد بعد از تغییر اتصال‌ها به‌روز نمی‌شه
+		// و اگه از اون بخونیم، اتصال تازه‌اضافه‌شده دیده نمی‌شه و دوباره پیشنهاد می‌شه
+		let allTables = [];
+		let connections = [];
+		try {
+			const data = await api('/api/admin/tables');
+			allTables = data.tables || [];
+			connections = data.connections || [];
+		} catch (error) {
+			host.innerHTML = '<div class="notice danger"></div>';
+			host.querySelector('.notice').textContent = error.message;
+			return;
+		}
+
 		const related = connections.filter((c) => c.tableAId === editingTable.id || c.tableBId === editingTable.id);
-		const others = allTables.filter((t) => t.id !== editingTable.id && !related.some((c) => c.tableAId === t.id || c.tableBId === t.id));
+		const connectedIds = new Set(related.map((c) => (c.tableAId === editingTable.id ? c.tableBId : c.tableAId)));
+		const others = allTables.filter((t) => t.id !== editingTable.id && !connectedIds.has(t.id));
+
 		host.innerHTML = '';
 		host.append(
 			el(
@@ -396,6 +430,7 @@ export function mountTableEditorDialog({ onSaved, onDeleted, getConnections, get
 								onclick: async () => {
 									try {
 										await api(`/api/admin/table-connections/${c.id}`, { method: 'DELETE' });
+										await onConnectionsChanged?.();
 										renderConnections();
 									} catch (error) {
 										host.querySelector('.notice.danger')?.remove();
@@ -434,6 +469,7 @@ export function mountTableEditorDialog({ onSaved, onDeleted, getConnections, get
 										tableBId: otherId,
 									},
 								});
+								await onConnectionsChanged?.();
 								renderConnections();
 							} catch (error) {
 								host.querySelector('.notice.danger')?.remove();

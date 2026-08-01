@@ -17,19 +17,63 @@ adminRouter.get('/me', (req, res) => {
 
 adminRouter.get('/dashboard', async (_req, res, next) => {
 	try {
-		const today = new Date();
-		const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-		const end = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
-		const [todayReservations, pendingPayments, noShows, revenue] = await Promise.all([
-			prisma.reservation.count({ where: { startAt: { gte: start, lt: end }, status: { in: ['CONFIRMED', 'COMPLETED'] } } }),
-			prisma.reservation.count({ where: { status: { in: ['HOLD', 'PAYMENT_PENDING', 'PAYMENT_REVIEW'] } } }),
-			prisma.reservation.count({ where: { status: 'NO_SHOW' } }),
+		const now = new Date();
+		const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+
+		const [actionNeeded, upcoming, revenue] = await Promise.all([
+			// ساعتشون گذشته ولی هنوز تکمیل/عدم‌حضور/لغو نشدن
+			prisma.reservation.count({ where: { status: 'CONFIRMED', startAt: { lt: now } } }),
+			// رزروهای امروز که هنوز ساعتشون نرسیده
+			prisma.reservation.findMany({
+				where: { status: 'CONFIRMED', startAt: { gte: now, lt: dayEnd } },
+				orderBy: { startAt: 'asc' },
+				take: 20,
+				include: { tables: { include: { table: true } } },
+			}),
 			prisma.payment.aggregate({
 				where: { status: 'PAID', reservation: { status: { not: 'CANCELLED' } } },
 				_sum: { amount: true },
 			}),
 		]);
-		res.json({ todayReservations, pendingPayments, noShows, totalRevenue: revenue._sum.amount || 0 });
+
+		res.json({ actionNeeded, upcoming, totalRevenue: revenue._sum.amount || 0 });
+	} catch (error) {
+		next(error);
+	}
+});
+
+const RESERVATION_FILTERS = ['action', 'all', 'today', 'confirmed', 'completed', 'noshow', 'cancelled'];
+
+function reservationFilterWhere(filter, now) {
+	const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+	const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+	switch (filter) {
+		// ساعتش گذشته ولی وضعیت نهایی نگرفته → منتظر تصمیم ادمین
+		case 'action':
+			return { status: 'CONFIRMED', startAt: { lt: now } };
+		case 'today':
+			return { startAt: { gte: dayStart, lt: dayEnd } };
+		// رزرو شده ولی هنوز ساعتش نرسیده
+		case 'confirmed':
+			return { status: 'CONFIRMED', startAt: { gte: now } };
+		case 'completed':
+			return { status: 'COMPLETED' };
+		case 'noshow':
+			return { status: 'NO_SHOW' };
+		case 'cancelled':
+			return { status: 'CANCELLED' };
+		default:
+			return {};
+	}
+}
+
+adminRouter.get('/reservations/counts', async (_req, res, next) => {
+	try {
+		const now = new Date();
+		const entries = await Promise.all(
+			RESERVATION_FILTERS.map(async (key) => [key, await prisma.reservation.count({ where: reservationFilterWhere(key, now) })]),
+		);
+		res.json({ counts: Object.fromEntries(entries) });
 	} catch (error) {
 		next(error);
 	}
@@ -49,7 +93,10 @@ adminRouter.get('/reservations', async (req, res, next) => {
 			'NO_SHOW',
 			'EXPIRED',
 		];
-		const where = {};
+		if (req.query.filter && !RESERVATION_FILTERS.includes(req.query.filter)) {
+			return res.status(400).json({ message: 'فیلتر نامعتبر است.' });
+		}
+		const where = { ...reservationFilterWhere(req.query.filter, new Date()) };
 		if (req.query.status) {
 			if (!VALID_STATUSES.includes(req.query.status)) {
 				return res.status(400).json({ message: 'وضعیت نامعتبر است.' });

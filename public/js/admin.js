@@ -90,15 +90,31 @@ function skeletonKpis(count) {
 }
 
 /* ---------- dashboard ---------- */
+function upcomingList(rows) {
+	if (!rows.length) {
+		return '<div class="report-card"><h4>رزروهای پیش‌روی امروز</h4><p class="hint">رزرو دیگری برای امروز باقی نمانده.</p></div>';
+	}
+	const items = rows
+		.map((r) => {
+			const time = new Date(r.startAt).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+			const tables = (r.tables || []).map((t) => t.table.displayNumber).join(' و ') || '—';
+			return `<div class="detail-row">
+					<span><b>${escapeHtml(time)}</b> · ${escapeHtml(r.customerName)}</span>
+					<span>میز ${escapeHtml(tables)} · ${Number(r.guestCount || 0).toLocaleString('fa-IR')} نفر</span>
+				</div>`;
+		})
+		.join('');
+	return `<div class="report-card"><h4>رزروهای پیش‌روی امروز</h4>${items}</div>`;
+}
+
 async function loadDashboard() {
-	el('dashboardBox').innerHTML = skeletonKpis(4);
+	el('dashboardBox').innerHTML = skeletonKpis(2);
 	try {
 		const dashboard = await api('/api/admin/dashboard');
 		el('dashboardBox').innerHTML =
-			kpi('calendar', 'رزرو امروز', dashboard.todayReservations.toLocaleString('fa-IR')) +
-			kpi('clock', 'پرداخت‌های معلق', dashboard.pendingPayments.toLocaleString('fa-IR')) +
-			kpi('ban', 'عدم حضور (No-show)', dashboard.noShows.toLocaleString('fa-IR')) +
-			kpi('receipt', 'درآمد کل', toman(dashboard.totalRevenue));
+			kpi('stop', 'منتظر تایید شما', dashboard.actionNeeded.toLocaleString('fa-IR')) +
+			kpi('receipt', 'درآمد کل', toman(dashboard.totalRevenue)) +
+			upcomingList(dashboard.upcoming || []);
 	} catch (error) {
 		el('dashboardBox').innerHTML = '<div class="notice danger"></div>';
 		el('dashboardBox').querySelector('.notice').textContent = error.message;
@@ -116,6 +132,40 @@ function statusOptions() {
 
 let allReservations = [];
 let reservationsTotal = 0;
+let reservationFilter = 'action';
+
+// ترتیب: کلید سرور، برچسب، آیکون (آیکون اول میاد تا در RTL سمت راست بشینه)
+const RESERVATION_TABS = [
+	['action', 'نیاز به بررسی', 'stop'],
+	['all', 'همه', 'list'],
+	['today', 'امروز', 'calendar'],
+	['confirmed', 'تایید‌شده', 'clock'],
+	['completed', 'تکمیل‌شده', 'check'],
+	['noshow', 'عدم حضور', 'ban'],
+	['cancelled', 'لغو‌شده', 'x'],
+];
+
+async function renderReservationTabs() {
+	let counts = {};
+	try {
+		({ counts } = await api('/api/admin/reservations/counts'));
+	} catch (_) {
+		// اگه شمارنده‌ها نیومد، تب‌ها بدون عدد نشون داده می‌شن
+	}
+	el('reservationTabs').innerHTML = RESERVATION_TABS.map(
+		([key, label, icon]) =>
+			`<button type="button" class="filter-tab${key === reservationFilter ? ' active' : ''}" data-res-filter="${key}">${ICONS[icon]}<span>${label} (${(counts[key] ?? 0).toLocaleString('fa-IR')})</span></button>`,
+	).join('');
+	el('reservationTabs')
+		.querySelectorAll('[data-res-filter]')
+		.forEach((btn) => {
+			btn.addEventListener('click', () => {
+				if (reservationFilter === btn.dataset.resFilter) return;
+				reservationFilter = btn.dataset.resFilter;
+				loadReservations();
+			});
+		});
+}
 
 async function loadReservations({ append = false } = {}) {
 	// تعداد رزروهایی که ادمین قبلاً باز کرده بود، تا بعد از تازه‌سازی به صفحه‌ی اول پرت نشه
@@ -123,13 +173,16 @@ async function loadReservations({ append = false } = {}) {
 	if (!append) {
 		el('reservationBox').innerHTML = '<div class="skeleton" style="height:180px"></div>';
 		allReservations = [];
+		renderReservationTabs();
 	}
 	let reservations;
 	let total;
 	try {
 		// سقف سمت سرور ۲۰۰ است، پس بیشتر از آن قابل بازیابی نیست
 		const limit = append ? 100 : Math.min(Math.max(previousCount, 100), 200);
-		({ reservations, total } = await api(`/api/admin/reservations?limit=${limit}&offset=${allReservations.length}`));
+		({ reservations, total } = await api(
+			`/api/admin/reservations?filter=${reservationFilter}&limit=${limit}&offset=${allReservations.length}`,
+		));
 	} catch (error) {
 		el('reservationBox').innerHTML = '<div class="notice danger"></div>';
 		el('reservationBox').querySelector('.notice').textContent = error.message;

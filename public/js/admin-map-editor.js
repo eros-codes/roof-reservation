@@ -50,6 +50,16 @@ export async function mountAdminMapEditor({ container, tables = [], connections 
 		getConnections: () => currentConnections,
 		onSaved: (tableId) => onReload?.({ keepSelectedId: tableId ?? null }),
 		onDeleted: () => onReload?.({ keepSelectedId: null }),
+		// بعد از هر تغییر اتصال، کش این ماژول هم تازه می‌شه تا با دیالوگ هم‌خوان بمونه
+		onConnectionsChanged: async () => {
+			try {
+				const data = await api('/api/admin/tables');
+				currentTables = data.tables || currentTables;
+				currentConnections = data.connections || [];
+			} catch (error) {
+				console.error('به‌روزرسانی اتصال‌ها ناموفق بود:', error);
+			}
+		},
 	});
 
 	const map = new RoofMap({

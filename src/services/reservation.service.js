@@ -37,7 +37,8 @@ export async function createReservationHold({
 	source = 'ONLINE',
 	originalReservationId = null,
 }) {
-	if (!Array.isArray(tableIds) || tableIds.length < 1 || tableIds.length > 2) throw new Error('انتخاب میز نامعتبر است.');
+	if (!Array.isArray(tableIds) || tableIds.length < 1 || tableIds.length > 6) throw new Error('انتخاب میز نامعتبر است.');
+	if (new Set(tableIds).size !== tableIds.length) throw new Error('یک میز نمی‌تواند دوبار در یک رزرو باشد.');
 	if (!Number.isInteger(guestCount) || guestCount < 1 || guestCount > 50) throw new Error('تعداد نفرات نامعتبر است.');
 	if (!Number.isInteger(durationMinutes) || durationMinutes < 1) throw new Error('مدت رزرو نامعتبر است.');
 	if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('تاریخ نامعتبر است.');

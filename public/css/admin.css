@@ -1,5 +1,43 @@
 /* admin.html — پنل ادمین — استایل اختصاصی همین صفحه. هیچ فایل دیگری این کلاس‌ها را تعریف نمی‌کند. */
 
+.filter-tabs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin-bottom: 14px;
+}
+
+.filter-tab {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 7px 13px;
+	border-radius: 999px;
+	border: 1px solid #e2d9cd;
+	background: #fff;
+	color: #4b5563;
+	font-family: inherit;
+	font-size: 12.5px;
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.filter-tab svg {
+	width: 15px;
+	height: 15px;
+}
+
+.filter-tab:hover {
+	border-color: #1a2e54;
+	color: #1a2e54;
+}
+
+.filter-tab.active {
+	background: #1a2e54;
+	border-color: #1a2e54;
+	color: #fff;
+}
+
 .report-card {
 	grid-column: 1 / -1;
 	background: #fff;
@@ -1794,6 +1832,20 @@ div.chip-row button.chip {
 }
 .rotation-field input[data-field='rotation'] {
 	max-width: 90px;
+}
+
+/* نسخه‌ی جمع‌وجورتر برای بازرس صندلی */
+.rotation-field--chair .rotation-dial {
+	width: 62px;
+	height: 62px;
+}
+
+.rotation-field--chair .rotation-field-row {
+	gap: 10px;
+}
+
+.rotation-field--chair input {
+	max-width: 72px;
 }
 
 @media (max-width: 1023px) {

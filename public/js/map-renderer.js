@@ -224,13 +224,22 @@ function createTableLabel(table) {
 }
 
 function createTimeBubble(text, table) {
-	const w = Math.max(70, text.length * 8 + 20);
-	const y = -(Number(table.height) / 2 + 58);
+	const halfH = 30; // نصف ارتفاع حباب
+	const arrow = 20; // طول نوک فلش
+	const w = Math.max(150, text.length * 16 + 44);
+	const offset = Number(table.height) / 2 + 34 + halfH + arrow;
+	// میزهای ردیف اول جای کافی بالای سرشون ندارن، پس حباب زیرشون نشون داده می‌شه
+	const below = Number(table.y) - (offset + halfH) < 0;
+	const y = below ? offset : -offset;
+	const arrowPath = below
+		? `M-14 ${-halfH + 2}L0 ${-halfH - arrow}L14 ${-halfH + 2}Z`
+		: `M-14 ${halfH - 2}L0 ${halfH + arrow}L14 ${halfH - 2}Z`;
+
 	const group = svgEl('g', { class: 'map-time-bubble', transform: `translate(0 ${y})` });
 	group.append(
-		svgEl('rect', { x: -w / 2, y: -16, width: w, height: 32, rx: 5 }),
-		svgEl('path', { d: 'M-7 15L0 25L7 15Z' }),
-		svgEl('text', { x: 0, y: 1, 'text-anchor': 'middle', 'dominant-baseline': 'middle' }),
+		svgEl('rect', { x: -w / 2, y: -halfH, width: w, height: halfH * 2, rx: 12 }),
+		svgEl('path', { d: arrowPath }),
+		svgEl('text', { x: 0, y: 2, 'text-anchor': 'middle', 'dominant-baseline': 'middle' }),
 	);
 	group.querySelector('text').textContent = text;
 	return group;
@@ -588,27 +597,47 @@ export class RoofMap {
 	}
 
 	drawComboConnector() {
-		if (this.selectedIds.length !== 2) {
-			this.comboLayer.innerHTML = '';
-			return;
+		this.comboLayer.innerHTML = '';
+		if (this.selectedIds.length < 2) return;
+
+		const selected = this.selectedIds.map((id) => this.tables.find((table) => table.id === id)).filter(Boolean);
+		if (selected.length < 2) return;
+
+		const selectedIds = new Set(selected.map((t) => t.id));
+		const edges = [];
+
+		// فقط بین میزهایی خط کشیده می‌شه که واقعاً به هم وصل‌ان؛
+		// مثلاً در گروه ۸-۹-۱۰ خط از ۹ به هرکدوم می‌ره، نه مستقیم از ۸ به ۱۰
+		for (const table of selected) {
+			for (const otherId of table.connectableTableIds || []) {
+				if (!selectedIds.has(otherId)) continue;
+				// هر جفت فقط یک‌بار
+				if (String(table.id) > String(otherId)) continue;
+				const other = selected.find((t) => t.id === otherId);
+				if (other) edges.push([table, other]);
+			}
 		}
-		const [a, b] = this.selectedIds.map((id) => this.tables.find((table) => table.id === id));
-		if (!a || !b) {
-			this.comboLayer.innerHTML = '';
-			return;
+
+		// اگر اطلاعات اتصال در دسترس نبود، میزها به‌ترتیب افقی به هم وصل می‌شن
+		// تا گروه انتخاب‌شده همچنان به‌صورت یکپارچه دیده بشه
+		if (!edges.length) {
+			const ordered = [...selected].sort((p, q) => Number(p.x) - Number(q.x));
+			for (let i = 0; i < ordered.length - 1; i += 1) edges.push([ordered[i], ordered[i + 1]]);
 		}
-		const midX = (Number(a.x) + Number(b.x)) / 2;
-		const midY = Math.min(Number(a.y), Number(b.y)) - 45;
-		let path = this.comboLayer.querySelector('.combo-connector');
-		let badge = this.comboLayer.querySelector('.combo-badge');
-		if (!path) {
-			path = svgEl('path', { class: 'combo-connector' });
-			badge = svgEl('g', { class: 'combo-badge' });
+
+		for (const [a, b] of edges) {
+			const midX = (Number(a.x) + Number(b.x)) / 2;
+			const midY = Math.min(Number(a.y), Number(b.y)) - 45;
+
+			const path = svgEl('path', { class: 'combo-connector' });
+			path.setAttribute('d', `M${a.x} ${a.y}Q${midX} ${midY} ${b.x} ${b.y}`);
+
+			const badge = svgEl('g', { class: 'combo-badge' });
 			badge.append(svgEl('circle', { r: 16 }), svgEl('text', { x: 0, y: 1, 'text-anchor': 'middle', 'dominant-baseline': 'middle' }));
 			badge.querySelector('text').textContent = '+';
+			badge.setAttribute('transform', `translate(${midX} ${midY - 3})`);
+
 			this.comboLayer.append(path, badge);
 		}
-		path.setAttribute('d', `M${a.x} ${a.y}Q${midX} ${midY} ${b.x} ${b.y}`);
-		badge?.setAttribute('transform', `translate(${midX} ${midY - 3})`);
 	}
 }
