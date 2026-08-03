@@ -20,6 +20,8 @@ reservationRouter.post('/hold', optionalUser, async (req, res, next) => {
 			customerPhone: normalizePhone(payload.customerPhone),
 			userId: req.user?.id || null,
 			source: req.user ? 'ONLINE' : 'GUEST',
+			decoration: payload.decoration === true,
+			decorationNote: payload.decorationNote,
 		});
 		// کوکی دسترسی همان لحظه صادر می‌شود تا صفحه‌ی پرداخت/فاکتور
 		// بدون نیاز به تایید پیامکی بتواند همین رزرو را ببیند
@@ -101,7 +103,10 @@ reservationRouter.post('/:id/change/hold', optionalUser, async (req, res, next) 
 
 		const nextGuestCount = Number(req.body.guestCount);
 		const oldTotal = original.totalAmount;
-		const newTotal = original.pricePerGuest * nextGuestCount;
+		// تزئین رزرو اصلی باید به رزرو جدید منتقل بشه، وگرنه هم از قلم می‌افته
+		// هم محاسبه‌ی مابه‌التفاوت اشتباه می‌شه
+		const keepsDecoration = original.decorationAmount > 0;
+		const newTotal = original.pricePerGuest * nextGuestCount + original.decorationAmount;
 		const change = await createReservationHold({
 			tableIds: req.body.tableIds,
 			date: req.body.date,
@@ -113,6 +118,8 @@ reservationRouter.post('/:id/change/hold', optionalUser, async (req, res, next) 
 			userId: original.userId,
 			source: 'ONLINE',
 			originalReservationId: original.id,
+			decoration: keepsDecoration,
+			decorationNote: original.decorationNote,
 		});
 
 		if (newTotal === oldTotal) {
@@ -209,6 +216,12 @@ reservationRouter.post('/:id/change/hold', optionalUser, async (req, res, next) 
 
 reservationRouter.get('/profile/list', requireUser, async (req, res, next) => {
 	try {
+		// رزروهای مهمانِ همین شماره که هنوز به حساب وصل نشدن، همین‌جا وصل می‌شن —
+		// تا اگه کاربر بعد از ورود هم رزرو مهمان ثبت کرد، از قلم نیفته
+		await prisma.reservation
+			.updateMany({ where: { customerPhone: req.user.phone, userId: null }, data: { userId: req.user.id } })
+			.catch((error) => console.error('اتصال رزروهای قبلی ناموفق بود:', error));
+
 		const reservations = await prisma.reservation.findMany({
 			where: { userId: req.user.id },
 			orderBy: { startAt: 'desc' },

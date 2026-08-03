@@ -98,6 +98,29 @@
 						<h3>گزارش‌ها</h3>
 						<div id="reportsBox" class="kpi-grid"></div>
 					</div>
+					<div id="admins" class="admin-section">
+						<h3>مدیریت ادمین‌ها</h3>
+						<div id="adminNotice"></div>
+						<div class="card" style="margin-bottom: 14px">
+							<h4>افزودن ادمین جدید</h4>
+							<div class="row">
+								<div class="field"><label>نام</label><input id="aName" /></div>
+								<div class="field"><label>ایمیل</label><input id="aEmail" type="email" autocomplete="off" /></div>
+							</div>
+							<div class="row">
+								<div class="field"><label>رمز عبور (حداقل ۸ کاراکتر)</label><input id="aPassword" type="password" autocomplete="new-password" /></div>
+								<div class="field">
+									<label>نقش</label>
+									<select id="aRole">
+										<option value="SECONDARY">فرعی</option>
+										<option value="MAIN">اصلی</option>
+									</select>
+								</div>
+							</div>
+							<button type="button" class="primary-btn" id="createAdminBtn">ثبت ادمین</button>
+						</div>
+						<div id="adminsBox"></div>
+					</div>
 				</section>
 			</section>
 		</main>

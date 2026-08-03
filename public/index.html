@@ -138,6 +138,17 @@
 							><input id="customerPhone" required inputmode="tel" autocomplete="tel" placeholder="09..." />
 						</div>
 					</div>
+					<div class="field" id="decorationField" hidden>
+						<label class="checkbox-row">
+							<input type="checkbox" id="decorationToggle" />
+							<span id="decorationLabel">تزئین میز</span>
+						</label>
+					</div>
+					<div class="field" id="decorationNoteField" hidden>
+						<label for="decorationNote">چه تزئینی می‌خوای؟ (اختیاری)</label>
+						<input id="decorationNote" maxlength="200" placeholder="مثلاً تولد، با بادکنک" />
+					</div>
+					<p class="dialog-hint" id="reservePolicy"></p>
 					<div class="actions">
 						<button class="secondary-btn" type="button" id="closeModal">برگشت</button>
 						<button class="primary-btn" type="submit">ثبت موقت و رفتن به پرداخت</button>

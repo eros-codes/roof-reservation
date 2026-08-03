@@ -57,7 +57,7 @@ function mountAuthWidget(mode) {
 		q('authLede').textContent = 'اسم و شماره موبایلت رو وارد کن تا حسابت ساخته بشه.';
 		mountOtpWidget(q('loginGateForm'), {
 			purpose: 'LOGIN',
-			extraFields: [{ key: 'name', label: 'نام', required: true }],
+			extraFields: [{ key: 'name', label: 'نام (اگر حساب نداری لازم است)', required: false }],
 			submitLabel: 'ثبت‌نام',
 			onVerified: async () => {
 				await load();
@@ -69,6 +69,7 @@ function mountAuthWidget(mode) {
 		q('authLede').textContent = 'با شماره موبایلت وارد شو تا رزروهات و اطلاعات حسابت رو اینجا ببینی.';
 		mountOtpWidget(q('loginGateForm'), {
 			purpose: 'LOGIN',
+			extraFields: [{ key: 'name', label: 'نام (اگر حساب نداری لازم است)', required: false }],
 			submitLabel: 'ورود',
 			onVerified: async () => {
 				await load();

@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma.js';
 import { addDays, addMinutes, combineDateAndTime, makeTimeSlots, overlapWithBuffer, timeToMinutes } from '../lib/time.js';
 import { getSettings, numberSetting } from './settings.service.js';
+import { createHttpError } from '../lib/http-error.js';
 
 const BLOCKING_STATUSES = ['HOLD', 'PAYMENT_PENDING', 'PAYMENT_REVIEW', 'CONFIRMED', 'CHANGE_PENDING'];
 
@@ -36,6 +37,8 @@ export async function getPublicConfig() {
 			cleaningBufferMinutes: numberSetting(settings, 'cleaningBufferMinutes', 15),
 			holdMinutes: numberSetting(settings, 'holdMinutes', 10),
 			pricePerGuest: numberSetting(settings, 'pricePerGuest', 100000),
+			decorationPrice: numberSetting(settings, 'decorationPrice', 0, { min: 0 }),
+			minCancelMinutes: 120,
 			currencyLabel: settings.currencyLabel || 'تومان',
 		},
 		dates,
@@ -328,7 +331,7 @@ export async function getAvailability({ date, guestCount, durationMinutes, start
 		const possible = makeTimeSlots(rangeStart, rangeEnd, interval);
 		starts = possible.filter((slot) => timeToMinutes(slot) + durationMinutes <= timeToMinutes(rangeEnd));
 	} else {
-		throw new Error('زمان شروع یا بازه زمانی لازم است.');
+		throw createHttpError(400, 'زمان شروع یا بازه زمانی لازم است.');
 	}
 
 	const bufferMinutes = numberSetting(settings, 'cleaningBufferMinutes', 15);
@@ -405,6 +408,48 @@ export async function getAvailability({ date, guestCount, durationMinutes, start
 	// ساده‌ترین گروه (کمترین میز) و نزدیک‌ترین ظرفیت اول پیشنهاد بشه
 	combos.sort((x, y) => x.tableIds.length - y.tableIds.length || Math.abs(x.capacity - guestCount) - Math.abs(y.capacity - guestCount));
 
+	// اگه برای ساعت خواسته‌شده هیچ گزینه‌ای نبود، نزدیک‌ترین ساعت‌های آزادِ همون روز
+	// پیشنهاد می‌شن تا کاربر به بن‌بست نخوره. فقط در حالت «ساعت دقیق» معنا داره،
+	// چون در حالت بازه، خودِ نتیجه از قبل همه‌ی اسلات‌ها رو پوشش داده.
+	const suggestions = [];
+	const nothingFound = !tableResults.some((t) => t.availability?.available) && combos.length === 0;
+	if (startTime && nothingFound) {
+		const workingHour = workingHoursByDay[dayStart.getDay()];
+		if (workingHour && !workingHour.isClosed) {
+			const requestedMinutes = timeToMinutes(startTime);
+			const closesAt = timeToMinutes(workingHour.closesAt);
+			const daySlots = makeTimeSlots(workingHour.opensAt, workingHour.closesAt, interval)
+				.filter((slot) => slot !== startTime && timeToMinutes(slot) + durationMinutes <= closesAt)
+				// نزدیک‌ترین‌ها به ساعت درخواستی اول بررسی می‌شن
+				.sort((a, b) => Math.abs(timeToMinutes(a) - requestedMinutes) - Math.abs(timeToMinutes(b) - requestedMinutes));
+
+			for (const slot of daySlots) {
+				if (suggestions.length >= 6) break;
+				const check = validateTimeWindow({ date, startTime: slot, durationMinutes, settings, workingHoursByDay });
+				if (!check.ok) continue;
+				const hasFreeTable = tables.some(
+					(table) =>
+						tableAvailabilityForStart({
+							table,
+							date,
+							startTime: slot,
+							durationMinutes,
+							guestCount,
+							reservations,
+							settings,
+							workingHoursByDay,
+							dayClosures,
+							check,
+							bufferMinutes,
+						})?.available,
+				);
+				if (hasFreeTable) suggestions.push({ startTime: slot, endTime: check.endTime });
+			}
+			// برای نمایش، به‌ترتیب ساعت مرتب می‌شن نه به‌ترتیب نزدیکی
+			suggestions.sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+		}
+	}
+
 	const hasPerfect = tableResults.some((t) => t.availability?.available && t.availability.matchType === 'perfect');
 	const hasSoft = tableResults.some((t) => t.availability?.available && t.availability.matchType === 'soft');
 	const exactMissingMessage =
@@ -416,6 +461,7 @@ export async function getAvailability({ date, guestCount, durationMinutes, start
 		durationMinutes,
 		tables: tableResults,
 		combos,
+		suggestions,
 		exactMissingMessage,
 	};
 }
@@ -432,12 +478,12 @@ export async function assertTablesAvailable({ tableIds, date, startTime, duratio
 	);
 	if (tableIds.length === 1) {
 		const table = availability.tables.find((t) => t.id === tableIds[0]);
-		if (!table?.availability?.available) throw new Error(table?.availability?.reason || 'میز در این زمان قابل رزرو نیست.');
+		if (!table?.availability?.available) throw createHttpError(400, table?.availability?.reason || 'میز در این زمان قابل رزرو نیست.');
 	} else {
 		// تطابق باید دقیق باشه نه زیرمجموعه‌ای، وگرنه انتخاب دو میز با یک ترکیبِ
 		// سه‌تایی هم جور در می‌آد و رزروی ثبت می‌شه که واقعاً معتبر نیست
 		const requested = [...tableIds].sort().join('|');
 		const combo = availability.combos.find((c) => [...c.tableIds].sort().join('|') === requested);
-		if (!combo) throw new Error('این ترکیب میز در این زمان قابل رزرو نیست.');
+		if (!combo) throw createHttpError(400, 'این ترکیب میز در این زمان قابل رزرو نیست.');
 	}
 }

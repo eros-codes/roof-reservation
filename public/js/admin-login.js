@@ -1,20 +1,18 @@
 import { api } from './api.js';
 
+const form = document.getElementById('loginForm');
 const btn = document.getElementById('login');
 const notice = document.getElementById('notice');
 const passwordInput = document.getElementById('password');
 const emailInput = document.getElementById('email');
-if (!btn || !notice || !passwordInput || !emailInput) {
+if (!form || !btn || !notice || !passwordInput || !emailInput) {
 	console.error('ساختار صفحه‌ی ورود ادمین ناقصه؛ یکی از فیلدهای لازم پیدا نشد.');
 }
-if (passwordInput) {
-	passwordInput.addEventListener('keydown', (event) => {
-		if (event.key === 'Enter') btn?.click();
-	});
-}
 
-if (btn) {
-	btn.addEventListener('click', async () => {
+if (form) {
+	// با <form>، کلید Enter خودکار کار می‌کنه و دیگه نیازی به هندلر دستی نیست
+	form.addEventListener('submit', async (event) => {
+		event.preventDefault();
 		const email = emailInput.value.trim();
 		const password = passwordInput.value;
 		if (!email || !password) {

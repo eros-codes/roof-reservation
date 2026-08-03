@@ -3,6 +3,50 @@ import { ICONS, initHeaderScroll, escapeHtml, faHours, detailRow as row, tablesT
 
 initHeaderScroll();
 
+function icsDate(value) {
+	return new Date(value).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+}
+
+function escapeIcs(text) {
+	return String(text || '')
+		.replace(/\\/g, '\\\\')
+		.replace(/;/g, '\\;')
+		.replace(/,/g, '\\,')
+		.replace(/\n/g, '\\n');
+}
+
+function downloadCalendarFile(reservation) {
+	const lines = [
+		'BEGIN:VCALENDAR',
+		'VEERSION:2.0',
+		'PRODID:-//Roof//Reservation//FA',
+		'BEGIN:VEVENT',
+		`UID:${reservation.trackingCode}@roof`,
+		`DTSTAMP:${icsDate(new Date())}`,
+		`DTSTART:${icsDate(reservation.startAt)}`,
+		`DTEND:${icsDate(reservation.endAt)}`,
+		`SUMMARY:${escapeIcs('رزرو میز در کافه Roof')}`,
+		`DESCRIPTION:${escapeIcs(`کد پیگیری: ${reservation.trackingCode}\nمیز ${tablesText(reservation)}\n${reservation.guestCount} نفر`)}`,
+		'BEGIN:VALARM',
+		'TRIGGER:-PT2H',
+		'ACTION:DISPLAY',
+		`DESCRIPTION:${escapeIcs('دو ساعت تا رزرو کافه Roof')}`,
+		'END:VALARM',
+		'END:VEVENT',
+		'END:VCALENDAR',
+	];
+
+	const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+	const url = URL.createObjectURL(blob);
+	const link = document.createElement('a');
+	link.href = url;
+	link.download = `roof-${reservation.trackingCode}.ics`;
+	document.body.appendChild(link);
+	link.click();
+	document.body.removeChild(link);
+	URL.revokeObjectURL(url);
+}
+
 const id = new URLSearchParams(location.search).get('id');
 const box = document.getElementById('invoiceBox');
 
@@ -43,6 +87,7 @@ async function init() {
     ${row('مدت رزرو', `${faHours(reservation.durationMinutes)} ساعت`)}
     ${row('میز', tablesText(reservation))}
     ${row('تعداد نفرات', Number(reservation.guestCount || 0).toLocaleString('fa-IR'))}
+    ${reservation.decorationAmount > 0 ? row('تزئین میز', `${toman(reservation.decorationAmount)}${reservation.decorationNote ? ` · ${reservation.decorationNote}` : ''}`) : ''}
     ${row('قیمت هر نفر', toman(reservation.pricePerGuest))}
     ${row('وضعیت پرداخت', payment.status ? PAYMENT_STATUS_FA[payment.status] || payment.status : '—')}
     ${payment.refId ? row('کد پیگیری پرداخت', payment.refId) : ''}
@@ -52,10 +97,12 @@ async function init() {
 
     <div class="actions">
       <button class="primary-btn" id="printBtn">${ICONS.receipt}<span>پرینت فاکتور</span></button>
+      <button class="secondary-btn" id="calendarBtn">${ICONS.calendar}<span>افزودن به تقویم</span></button>
       <a class="secondary-btn" href="/profile.html">پروفایل من</a>
     </div>
   `;
 	document.getElementById('printBtn').addEventListener('click', () => window.print());
+	document.getElementById('calendarBtn').addEventListener('click', () => downloadCalendarFile(reservation));
 }
 
 init().catch((error) => {

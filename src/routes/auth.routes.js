@@ -134,11 +134,31 @@ authRouter.post('/otp/verify', otpVerifyLimiter, async (req, res, next) => {
 		}
 
 		const safeName = name ? String(name).trim().slice(0, 80) : null;
+		let resolvedName = safeName;
+		if (!resolvedName) {
+			const previous = await prisma.reservation.findFirst({
+				where: { customerPhone: phone, customerName: { not: '' } },
+				orderBy: { createdAt: 'desc' },
+				select: { customerName: true },
+			});
+			resolvedName = previous?.customerName?.trim() || null;
+		}
+
+		const existing = await prisma.user.findUnique({ where: { phone } });
+		if (!existing && !resolvedName) {
+			return res.status(400).json({ message: 'برای ساخت حساب، وارد کردن نام لازم است.' });
+		}
+
 		const user = await prisma.user.upsert({
 			where: { phone },
-			update: { name: safeName || undefined },
-			create: { phone, name: safeName },
+			update: { name: resolvedName || undefined },
+			create: { phone, name: resolvedName },
 		});
+
+		await prisma.reservation
+			.updateMany({ where: { customerPhone: phone, userId: null }, data: { userId: user.id } })
+			.catch((error) => console.error('اتصال رزروهای قبلی به حساب ناموفق بود:', error));
+
 		setCookie(res, 'userToken', signUserToken(user));
 		res.json({ message: 'ورود انجام شد.', user });
 	} catch (error) {

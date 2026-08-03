@@ -25,13 +25,16 @@ const SECTIONS = [
 	{ key: 'closures', label: 'تعطیلی‌ها', icon: 'ban' },
 	{ key: 'settings', label: 'قیمت و تنظیمات', icon: 'gear' },
 	{ key: 'reports', label: 'گزارش‌ها', icon: 'chart' },
+	{ key: 'admins', label: 'مدیریت ادمین‌ها', icon: 'shield' },
 ];
 const ZONE_FA = { WINDOW: 'سالن پنجره', CENTER: 'سالن وسط', ROOF: 'روف گاردن' };
 const SHAPE_FA = { ROUND: 'گرد', SQUARE: 'مربع', RECTANGLE: 'مستطیل' };
-const ROLE_FA = { OWNER: 'مالک', MANAGER: 'مدیر', RECEPTION: 'پذیرش' };
+const ROLE_FA = { MAIN: 'ادمین اصلی', SECONDARY: 'ادمین فرعی' };
+const SECONDARY_SECTIONS = ['reservations', 'manual', 'tables'];
 const DAY_FA = ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه'];
 const SETTINGS_FIELDS = [
 	['pricePerGuest', 'قیمت هر نفر (تومان)'],
+	['decorationPrice', 'هزینه تزئین (تومان · صفر = غیرفعال)'],
 	['reservationWindowDays', 'بازه باز بودن رزرو (روز)'],
 	['minLeadMinutes', 'حداقل فاصله از الان (دقیقه)'],
 	['minDurationMinutes', 'حداقل مدت رزرو (دقیقه)'],
@@ -43,19 +46,31 @@ const SETTINGS_FIELDS = [
 ];
 
 function canManageTables() {
-	return ['OWNER', 'MANAGER'].includes(state.admin?.role);
+	return ['MAIN', 'SECONDARY'].includes(state.admin?.role);
+}
+
+function isMain() {
+	return state.admin?.role === 'MAIN';
+}
+
+function visibleSections() {
+	return isMain() ? SECTIONS : SECTIONS.filter((s) => SECONDARY_SECTIONS.includes(s.key));
 }
 
 /* ---------- menu / sections ---------- */
 function renderMenu() {
 	const nav = el('adminMenu');
-	nav.innerHTML = SECTIONS.map(
-		(section, index) =>
-			`<button data-section="${section.key}" class="${index === 0 ? 'active' : ''}">${ICONS[section.icon]}<span>${section.label}</span></button>`,
-	).join('');
+	const sections = visibleSections();
+	nav.innerHTML = sections
+		.map(
+			(section, index) =>
+				`<button data-section="${section.key}" class="${index === 0 ? 'active' : ''}">${ICONS[section.icon]}<span>${section.label}</span></button>`,
+		)
+		.join('');
 	nav.querySelectorAll('button').forEach((button) => {
 		button.addEventListener('click', () => switchSection(button.dataset.section));
 	});
+	if (sections.length) switchSection(sections[0].key);
 }
 
 function switchSection(name) {
@@ -127,7 +142,7 @@ function statusOptions() {
     <option value="COMPLETED">تکمیل‌شده</option>
     <option value="NO_SHOW">عدم حضور مشتری</option>
     <option value="CANCELLED">لغو رزرو</option>
-    ${state.admin?.role !== 'RECEPTION' ? '<option value="CONFIRMED">تایید</option>' : ''}`;
+    ${state.admin?.role !== 'SECONDARY' ? '<option value="CONFIRMED">تایید</option>' : ''}`;
 }
 
 let allReservations = [];
@@ -205,8 +220,8 @@ async function loadReservations({ append = false } = {}) {
       <td>${escapeHtml(reservation.customerName)}<br><small style="color:var(--deep-taupe)">${escapeHtml(reservation.customerPhone)}</small></td>
       <td>${faDateTime(reservation.startAt)}</td>
       <td>${escapeHtml((reservation.tables || []).map((item) => item.table.displayNumber).join(' و '))}</td>
-      <td>${toman(reservation.totalAmount)}</td>
-      <td><span class="status ${escapeHtml(reservation.status)}">${escapeHtml(statusFa(reservation.status))}</span></td>
+      <td>${toman(reservation.totalAmount)}${reservation.decorationAmount > 0 ? ` <span class="chip">🎀 ${escapeHtml(reservation.decorationNote || 'تزئین')}</span>` : ''}</td>
+      <td><span class="status ${escapeHtml(reservation.status)}">${escapeHtml(statusFa(reservation.status))}</span>${reservation.refundStatus === 'PENDING' ? ' <span class="chip">بازگشت وجه</span>' : ''}</td>
       <td><select data-status="${escapeHtml(reservation.id)}">${statusOptions()}</select></td>
     </tr>`,
 			)
@@ -579,9 +594,122 @@ async function loadReports() {
 	}
 }
 
+async function loadAdmins() {
+	el('adminsBox').innerHTML = '<div class="skeleton" style="height:140px"></div>';
+	let admins;
+	try {
+		({ admins } = await api('/api/admin/admins'));
+	} catch (error) {
+		el('adminsBox').innerHTML = '<div class="notice danger"></div>';
+		el('adminsBox').querySelector('.notice').textContent = error.message;
+		return;
+	}
+
+	el('adminsBox').innerHTML = `<div class="table-scroll"><table class="table-list"><thead><tr>
+			<th>نام</th><th>ایمیل</th><th>نقش</th><th>وضعیت</th><th>عملیات</th>
+		</tr></thead><tbody>${admins
+			.map(
+				(admin) => `<tr>
+			<td class="fw-bold">${escapeHtml(admin.name)}${admin.id === state.admin.id ? ' <span class="chip">شما</span>' : ''}</td>
+			<td dir="ltr">${escapeHtml(admin.email)}</td>
+			<td>
+				<select data-admin-role="${escapeHtml(admin.id)}" ${admin.id === state.admin.id ? 'disabled' : ''}>
+					<option value="SECONDARY" ${admin.role === 'SECONDARY' ? 'selected' : ''}>فرعی</option>
+					<option value="MAIN" ${admin.role === 'MAIN' ? 'selected' : ''}>اصلی</option>
+				</select>
+			</td>
+			<td><span class="status ${admin.isActive ? 'CONFIRMED' : 'CANCELLED'}">${admin.isActive ? 'فعال' : 'غیرفعال'}</span></td>
+			<td>
+				<button type="button" class="secondary-btn" data-admin-password="${escapeHtml(admin.id)}">تغییر رمز</button>
+				${admin.id === state.admin.id ? '' : `<button type="button" class="secondary-btn" data-admin-toggle="${escapeHtml(admin.id)}">${admin.isActive ? 'غیرفعال' : 'فعال'}</button>`}
+				${admin.id === state.admin.id ? '' : `<button type="button" class="danger-btn" data-admin-delete="${escapeHtml(admin.id)}">حذف</button>`}
+			</td>
+		</tr>`,
+			)
+			.join('')}</tbody></table></div>`;
+
+	const notice = el('adminNotice');
+	const run = async (fn) => {
+		try {
+			await fn();
+			notice.className = '';
+			notice.textContent = '';
+			await loadAdmins();
+		} catch (error) {
+			notice.className = 'notice danger';
+			notice.textContent = error.message;
+		}
+	};
+
+	el('adminsBox')
+		.querySelectorAll('[data-admin-role]')
+		.forEach((select) => {
+			select.addEventListener('change', () =>
+				run(() => api(`/api/admin/admins/${select.dataset.adminRole}`, { method: 'PATCH', body: { role: select.value } })),
+			);
+		});
+
+	el('adminsBox')
+		.querySelectorAll('[data-admin-toggle]')
+		.forEach((button) => {
+			const current = admins.find((a) => a.id === button.dataset.adminToggle);
+			button.addEventListener('click', () =>
+				run(() => api(`/api/admin/admins/${button.dataset.adminToggle}`, { method: 'PATCH', body: { isActive: !current.isActive } })),
+			);
+		});
+
+	el('adminsBox')
+		.querySelectorAll('[data-admin-password]')
+		.forEach((button) => {
+			button.addEventListener('click', () => {
+				const password = prompt('رمز عبور جدید (حداقل ۸ کاراکتر):');
+				if (!password) return;
+				run(() => api(`/api/admin/admins/${button.dataset.adminPassword}`, { method: 'PATCH', body: { password } }));
+			});
+		});
+
+	el('adminsBox')
+		.querySelectorAll('[data-admin-delete]')
+		.forEach((button) => {
+			button.addEventListener('click', () => {
+				if (!confirm('این ادمین برای همیشه حذف بشه؟')) return;
+				run(() => api(`/api/admin/admins/${button.dataset.adminDelete}`, { method: 'DELETE' }));
+			});
+		});
+}
+
+async function createAdmin() {
+	const notice = el('adminNotice');
+	const body = {
+		name: el('aName').value.trim(),
+		email: el('aEmail').value.trim(),
+		password: el('aPassword').value,
+		role: el('aRole').value,
+	};
+	if (!body.name || !body.email) {
+		notice.className = 'notice danger';
+		notice.textContent = 'نام و ایمیل لازم است.';
+		return;
+	}
+	if (body.password.length < 8) {
+		notice.className = 'notice danger';
+		notice.textContent = 'رمز عبور باید حداقل ۸ کاراکتر باشد.';
+		return;
+	}
+	try {
+		await api('/api/admin/admins', { method: 'POST', body });
+		['aName', 'aEmail', 'aPassword'].forEach((id) => (el(id).value = ''));
+		notice.className = 'notice ok';
+		notice.textContent = 'ادمین جدید ساخته شد.';
+		await loadAdmins();
+	} catch (error) {
+		notice.className = 'notice danger';
+		notice.textContent = error.message;
+	}
+}
+
 /* ---------- init ---------- */
 async function init() {
-	renderMenu();
 	try {
 		const { admin } = await api('/api/admin/me');
 		state.admin = admin;
@@ -590,6 +718,9 @@ async function init() {
 		location.href = '/admin-login.html';
 		return;
 	}
+
+	renderMenu();
+	if (isMain()) el('createAdminBtn').addEventListener('click', createAdmin);
 
 	const now = new Date();
 	const localDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
@@ -602,9 +733,10 @@ async function init() {
 		},
 	);
 	await loadTables();
-	await Promise.all([loadDashboard(), loadReservations()]);
-	// بقیه‌ی بخش‌ها فقط وقتی واقعاً باز می‌شن بارگذاری بشن
-	const lazyLoaders = { hours: loadHours, closures: loadClosures, settings: loadSettings, reports: loadReports };
+	await Promise.all(isMain() ? [loadDashboard(), loadReservations()] : [loadReservations()]);
+	const lazyLoaders = isMain()
+		? { hours: loadHours, closures: loadClosures, settings: loadSettings, reports: loadReports, admins: loadAdmins }
+		: {};
 	const loaded = new Set();
 	el('adminMenu').addEventListener('click', (event) => {
 		const key = event.target.closest('button')?.dataset.section;

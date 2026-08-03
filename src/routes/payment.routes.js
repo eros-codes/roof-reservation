@@ -62,12 +62,21 @@ paymentRouter.post('/:reservationId/request', paymentRequestLimiter, async (req,
 			return res.status(400).json({ message: 'این رزرو دیگر قابل پرداخت نیست.' });
 		}
 
-		const { authority, paymentUrl } = await requestZarinpalPayment({
-			amount: reservation.totalAmount,
-			description: `رزرو Roof · کد پیگیری ${reservation.trackingCode}`,
-			callbackUrl: `${config.appUrl}/api/payments/callback`,
-			mobile: reservation.customerPhone,
-		});
+		let authority;
+		let paymentUrl;
+		try {
+			({ authority, paymentUrl } = await requestZarinpalPayment({
+				amount: reservation.totalAmount,
+				description: `رزرو Roof · کد پیگیری ${reservation.trackingCode}`,
+				callbackUrl: `${config.appUrl}/api/payments/callback`,
+				mobile: reservation.customerPhone,
+			}));
+		} catch (gatewayError) {
+			// خطای سرویس بیرونی نباید ۵۰۰ بشه؛ وگرنه در production پیامش
+			// با متن عمومی جایگزین می‌شه و دلیل واقعی گم می‌شه
+			console.error('درخواست پرداخت از زرین‌پال ناموفق بود:', gatewayError);
+			return res.status(502).json({ message: `اتصال به درگاه پرداخت ممکن نشد: ${gatewayError.message}` });
+		}
 
 		await prisma.payment.updateMany({
 			where: { reservationId: reservation.id, status: { in: ['PENDING', 'FAILED', 'REVIEW'] } },

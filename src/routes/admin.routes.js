@@ -15,14 +15,14 @@ adminRouter.get('/me', (req, res) => {
 	res.json({ admin: { id: req.admin.id, email: req.admin.email, name: req.admin.name, role: req.admin.role } });
 });
 
-adminRouter.get('/dashboard', async (_req, res, next) => {
+adminRouter.get('/dashboard', requireRole('MAIN'), async (_req, res, next) => {
 	try {
 		const now = new Date();
 		const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
 
 		const [actionNeeded, upcoming, revenue] = await Promise.all([
-			// ساعتشون گذشته ولی هنوز تکمیل/عدم‌حضور/لغو نشدن
-			prisma.reservation.count({ where: { status: 'CONFIRMED', startAt: { lt: now } } }),
+			// از همون تعریف فیلتر استفاده می‌شه تا این دو عدد هیچ‌وقت با هم فرق نکنن
+			prisma.reservation.count({ where: reservationFilterWhere('action', now) }),
 			// رزروهای امروز که هنوز ساعتشون نرسیده
 			prisma.reservation.findMany({
 				where: { status: 'CONFIRMED', startAt: { gte: now, lt: dayEnd } },
@@ -48,9 +48,18 @@ function reservationFilterWhere(filter, now) {
 	const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 	const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
 	switch (filter) {
-		// ساعتش گذشته ولی وضعیت نهایی نگرفته → منتظر تصمیم ادمین
+		// هرچیزی که واقعاً منتظر تصمیم یا اقدام ادمینه:
 		case 'action':
-			return { status: 'CONFIRMED', startAt: { lt: now } };
+			return {
+				OR: [
+					// زمانش تموم شده ولی تکمیل/عدم‌حضور نخورده
+					{ status: 'CONFIRMED', endAt: { lt: now } },
+					// پول گرفته شده ولی ثبت رزرو شکست خورده — فوری‌ترین مورد
+					{ status: 'PAYMENT_REVIEW' },
+					// به مشتری بدهکاریم و هنوز برنگردوندیم
+					{ refundStatus: 'PENDING' },
+				],
+			};
 		case 'today':
 			return { startAt: { gte: dayStart, lt: dayEnd } };
 		// رزرو شده ولی هنوز ساعتش نرسیده
@@ -162,8 +171,8 @@ const ADMIN_SETTABLE_STATUSES = ['CONFIRMED', 'COMPLETED', 'NO_SHOW', 'CANCELLED
 
 adminRouter.patch('/reservations/:id/status', async (req, res, next) => {
 	try {
-		const allowedForReception = ['COMPLETED', 'NO_SHOW', 'CANCELLED'];
-		if (req.admin.role === 'RECEPTION' && !allowedForReception.includes(req.body.status)) {
+		const allowedForSecondary = ['COMPLETED', 'NO_SHOW', 'CANCELLED'];
+		if (req.admin.role === 'SECONDARY' && !allowedForSecondary.includes(req.body.status)) {
 			return res.status(403).json({
 				message: 'پذیرش فقط می‌تواند completed، no_show یا cancelled ثبت کند.',
 			});
@@ -252,7 +261,7 @@ const TABLE_FIELDS = [
 	'image',
 ];
 
-adminRouter.post('/tables', requireRole('OWNER', 'MANAGER'), async (req, res, next) => {
+adminRouter.post('/tables', requireRole('MAIN', 'SECONDARY'), async (req, res, next) => {
 	try {
 		const data = {};
 		for (const key of TABLE_FIELDS) {
@@ -270,7 +279,7 @@ adminRouter.post('/tables', requireRole('OWNER', 'MANAGER'), async (req, res, ne
 	}
 });
 
-adminRouter.patch('/tables/:id', requireRole('OWNER', 'MANAGER'), async (req, res, next) => {
+adminRouter.patch('/tables/:id', requireRole('MAIN', 'SECONDARY'), async (req, res, next) => {
 	try {
 		const data = {};
 		for (const key of TABLE_FIELDS) {
@@ -303,7 +312,7 @@ adminRouter.patch('/tables/:id', requireRole('OWNER', 'MANAGER'), async (req, re
 	}
 });
 
-adminRouter.delete('/tables/:id', requireRole('OWNER', 'MANAGER'), async (req, res, next) => {
+adminRouter.delete('/tables/:id', requireRole('MAIN', 'SECONDARY'), async (req, res, next) => {
 	try {
 		await prisma.cafeTable.delete({ where: { id: req.params.id } });
 		res.json({ message: 'میز حذف شد.' });
@@ -317,7 +326,7 @@ adminRouter.delete('/tables/:id', requireRole('OWNER', 'MANAGER'), async (req, r
 	}
 });
 
-adminRouter.post('/table-connections', requireRole('OWNER', 'MANAGER'), async (req, res, next) => {
+adminRouter.post('/table-connections', requireRole('MAIN', 'SECONDARY'), async (req, res, next) => {
 	try {
 		const { tableAId, tableBId } = req.body;
 		if (!tableAId || !tableBId) {
@@ -338,7 +347,7 @@ adminRouter.post('/table-connections', requireRole('OWNER', 'MANAGER'), async (r
 	}
 });
 
-adminRouter.delete('/table-connections/:id', requireRole('OWNER', 'MANAGER'), async (req, res, next) => {
+adminRouter.delete('/table-connections/:id', requireRole('MAIN', 'SECONDARY'), async (req, res, next) => {
 	try {
 		await prisma.tableConnection.delete({ where: { id: req.params.id } });
 		res.json({ message: 'اتصال حذف شد.' });
@@ -365,9 +374,13 @@ const NUMBER_SETTING_BOUNDS = {
 	reservationWindowDays: { min: 1, max: 365 },
 	holdMinutes: { min: 1, max: 120 },
 	pricePerGuest: { min: 1, max: 100000000 },
+	// صفر مجازه و یعنی قابلیت تزئین کلاً خاموش
+	decorationPrice: { min: 0, max: 100000000 },
+	// صفر یعنی یادآوری خاموش؛ سقف یک هفته
+	reminderBeforeMinutes: { min: 0, max: 10080 },
 };
 
-adminRouter.patch('/settings', requireRole('OWNER', 'MANAGER'), async (req, res, next) => {
+adminRouter.patch('/settings', requireRole('MAIN'), async (req, res, next) => {
 	try {
 		const updates = Object.entries(req.body || {});
 		for (const [key, value] of updates) {
@@ -385,7 +398,7 @@ adminRouter.patch('/settings', requireRole('OWNER', 'MANAGER'), async (req, res,
 	}
 });
 
-adminRouter.get('/working-hours', async (_req, res, next) => {
+adminRouter.get('/working-hours', requireRole('MAIN'), async (_req, res, next) => {
 	try {
 		const workingHours = await prisma.workingHour.findMany({ orderBy: { dayOfWeek: 'asc' } });
 		res.json({ workingHours });
@@ -396,7 +409,7 @@ adminRouter.get('/working-hours', async (_req, res, next) => {
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-adminRouter.patch('/working-hours/:dayOfWeek', requireRole('OWNER', 'MANAGER'), async (req, res, next) => {
+adminRouter.patch('/working-hours/:dayOfWeek', requireRole('MAIN'), async (req, res, next) => {
 	try {
 		const dayOfWeek = Number(req.params.dayOfWeek);
 		if (!Number.isInteger(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6) {
@@ -422,7 +435,7 @@ adminRouter.patch('/working-hours/:dayOfWeek', requireRole('OWNER', 'MANAGER'), 
 	}
 });
 
-adminRouter.get('/closures', async (_req, res, next) => {
+adminRouter.get('/closures', requireRole('MAIN'), async (_req, res, next) => {
 	try {
 		const closures = await prisma.closure.findMany({ orderBy: { date: 'desc' }, include: { table: true } });
 		res.json({ closures });
@@ -431,7 +444,7 @@ adminRouter.get('/closures', async (_req, res, next) => {
 	}
 });
 
-adminRouter.post('/closures', requireRole('OWNER', 'MANAGER'), async (req, res, next) => {
+adminRouter.post('/closures', requireRole('MAIN'), async (req, res, next) => {
 	try {
 		const title = String(req.body.title || '').trim();
 		if (!title) return res.status(400).json({ message: 'عنوان تعطیلی لازم است.' });
@@ -457,7 +470,7 @@ adminRouter.post('/closures', requireRole('OWNER', 'MANAGER'), async (req, res, 
 	}
 });
 
-adminRouter.delete('/closures/:id', requireRole('OWNER', 'MANAGER'), async (req, res, next) => {
+adminRouter.delete('/closures/:id', requireRole('MAIN'), async (req, res, next) => {
 	try {
 		await prisma.closure.delete({ where: { id: req.params.id } });
 		res.json({ message: 'تعطیلی حذف شد.' });
@@ -467,7 +480,7 @@ adminRouter.delete('/closures/:id', requireRole('OWNER', 'MANAGER'), async (req,
 	}
 });
 
-adminRouter.get('/reports/revenue', requireRole('OWNER', 'MANAGER'), async (_req, res, next) => {
+adminRouter.get('/reports/revenue', requireRole('MAIN'), async (_req, res, next) => {
 	try {
 		const now = new Date();
 		const sevenDaysAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
@@ -539,7 +552,7 @@ adminRouter.get('/reports/revenue', requireRole('OWNER', 'MANAGER'), async (_req
 	}
 });
 
-adminRouter.get('/users', requireRole('OWNER', 'MANAGER'), async (_req, res, next) => {
+adminRouter.get('/users', requireRole('MAIN'), async (_req, res, next) => {
 	try {
 		const users = await prisma.user.findMany({
 			orderBy: { createdAt: 'desc' },
@@ -553,7 +566,7 @@ adminRouter.get('/users', requireRole('OWNER', 'MANAGER'), async (_req, res, nex
 	}
 });
 
-adminRouter.get('/admins', requireRole('OWNER'), async (_req, res, next) => {
+adminRouter.get('/admins', requireRole('MAIN'), async (_req, res, next) => {
 	try {
 		const admins = await prisma.adminUser.findMany({
 			orderBy: { createdAt: 'desc' },
@@ -565,7 +578,7 @@ adminRouter.get('/admins', requireRole('OWNER'), async (_req, res, next) => {
 	}
 });
 
-adminRouter.post('/admins', requireRole('OWNER'), async (req, res, next) => {
+adminRouter.post('/admins', requireRole('MAIN'), async (req, res, next) => {
 	try {
 		const email = String(req.body.email || '')
 			.trim()
@@ -575,7 +588,7 @@ adminRouter.post('/admins', requireRole('OWNER'), async (req, res, next) => {
 		if (!email || !name) {
 			return res.status(400).json({ message: 'ایمیل و نام لازم است.' });
 		}
-		if (!['OWNER', 'MANAGER', 'RECEPTION'].includes(role)) {
+		if (!['MAIN', 'SECONDARY'].includes(role)) {
 			return res.status(400).json({ message: 'نقش نامعتبر است.' });
 		}
 		if (!req.body.password || req.body.password.length < 8) {
@@ -604,34 +617,62 @@ adminRouter.post('/admins', requireRole('OWNER'), async (req, res, next) => {
 	}
 });
 
-const ADMIN_ROLES = ['OWNER', 'MANAGER', 'RECEPTION'];
+const ADMIN_ROLES = ['MAIN', 'SECONDARY'];
 
-adminRouter.patch('/admins/:id', requireRole('OWNER'), async (req, res, next) => {
+async function activeMainCount() {
+	return prisma.adminUser.count({ where: { role: 'MAIN', isActive: true } });
+}
+
+adminRouter.patch('/admins/:id', requireRole('MAIN'), async (req, res, next) => {
 	try {
-		if (req.params.id === req.admin.id && req.body.isActive === false) {
-			return res.status(400).json({ message: 'نمی‌توانی حساب خودت را غیرفعال کنی.' });
-		}
+		const target = await prisma.adminUser.findUnique({ where: { id: req.params.id } });
+		if (!target) return res.status(404).json({ message: 'ادمین پیدا نشد.' });
+		const isSelf = target.id === req.admin.id;
+
 		const data = {};
 		if (req.body.name !== undefined) data.name = String(req.body.name).trim();
-		if (req.body.isActive !== undefined) data.isActive = req.body.isActive === true;
-		if (req.body.role !== undefined) {
-			if (!ADMIN_ROLES.includes(req.body.role)) {
-				return res.status(400).json({ message: 'نقش نامعتبر است.' });
+
+		if (req.body.isActive !== undefined) {
+			const nextActive = req.body.isActive === true;
+			if (isSelf && !nextActive) return res.status(400).json({ message: 'نمی‌توانی حساب خودت را غیرفعال کنی.' });
+			if (!nextActive && target.role === 'MAIN' && target.isActive && (await activeMainCount()) <= 1) {
+				return res.status(400).json({ message: 'حداقل یک ادمین اصلی فعال باید باقی بماند.' });
 			}
-			if (req.params.id === req.admin.id) {
-				return res.status(400).json({ message: 'نمی‌توانی نقش خودت را عوض کنی.' });
+			data.isActive = nextActive;
+		}
+
+		if (req.body.role !== undefined) {
+			if (!ADMIN_ROLES.includes(req.body.role)) return res.status(400).json({ message: 'نقش نامعتبر است.' });
+			if (isSelf) return res.status(400).json({ message: 'نمی‌توانی نقش خودت را عوض کنی.' });
+			if (target.role === 'MAIN' && req.body.role !== 'MAIN' && target.isActive && (await activeMainCount()) <= 1) {
+				return res.status(400).json({ message: 'حداقل یک ادمین اصلی فعال باید باقی بماند.' });
 			}
 			data.role = req.body.role;
 		}
+
 		if (req.body.password !== undefined) {
-			if (String(req.body.password).length < 8) {
-				return res.status(400).json({ message: 'رمز عبور باید حداقل ۸ کاراکتر باشد.' });
-			}
+			if (String(req.body.password).length < 8) return res.status(400).json({ message: 'رمز عبور باید حداقل ۸ کاراکتر باشد.' });
 			data.passwordHash = await bcrypt.hash(String(req.body.password), 10);
 		}
 
 		const admin = await prisma.adminUser.update({ where: { id: req.params.id }, data });
 		res.json({ admin: { id: admin.id, email: admin.email, name: admin.name, role: admin.role, isActive: admin.isActive } });
+	} catch (error) {
+		if (error.code === 'P2025') return res.status(404).json({ message: 'ادمین پیدا نشد.' });
+		next(error);
+	}
+});
+
+adminRouter.delete('/admins/:id', requireRole('MAIN'), async (req, res, next) => {
+	try {
+		if (req.params.id === req.admin.id) return res.status(400).json({ message: 'نمی‌توانی حساب خودت را حذف کنی.' });
+		const target = await prisma.adminUser.findUnique({ where: { id: req.params.id } });
+		if (!target) return res.status(404).json({ message: 'ادمین پیدا نشد.' });
+		if (target.role === 'MAIN' && target.isActive && (await activeMainCount()) <= 1) {
+			return res.status(400).json({ message: 'حداقل یک ادمین اصلی فعال باید باقی بماند.' });
+		}
+		await prisma.adminUser.delete({ where: { id: req.params.id } });
+		res.json({ message: 'ادمین حذف شد.' });
 	} catch (error) {
 		if (error.code === 'P2025') return res.status(404).json({ message: 'ادمین پیدا نشد.' });
 		next(error);

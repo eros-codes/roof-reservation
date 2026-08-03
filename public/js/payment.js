@@ -88,6 +88,7 @@ function render() {
       ${row(ICONS.table, 'میز', tablesText(reservation))}
       ${row(ICONS.clock, 'زمان', `${faDateTime(reservation.startAt)} تا ${endTimeText(reservation)}`)}
       ${row(ICONS.users, 'تعداد نفرات', Number(reservation.guestCount || 0).toLocaleString('fa-IR'))}
+      ${reservation.decorationAmount > 0 ? row(ICONS.check, 'تزئین میز', `${toman(reservation.decorationAmount)}${reservation.decorationNote ? ` · ${escapeHtml(reservation.decorationNote)}` : ''}`) : ''}
       <div class="amount-row"><span>مبلغ قابل پرداخت</span><strong>${toman(reservation.totalAmount)}</strong></div>
     </div>
 

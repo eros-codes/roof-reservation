@@ -11,7 +11,9 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "db:seed": "node prisma/seed.js",
-    "check": "node --check src/server.js"
+    "check": "node --check src/server.js",
+    "lint": "node --check src/server.js && node --check src/lib/prisma.js && node --check src/routes/auth.routes.js && node --check src/services/reservation.service.js && node --check src/services/availability.service.js && node --check src/lib/http-error.js && node --check public/js/ui.js && node --check public/js/payment.js && node --check public/js/profile.js",
+    "test": "node --test"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

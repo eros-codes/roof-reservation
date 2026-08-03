@@ -13,6 +13,7 @@ import { reservationRouter } from './routes/reservation.routes.js';
 import { paymentRouter } from './routes/payment.routes.js';
 import { adminRouter } from './routes/admin.routes.js';
 import { expireOldHolds } from './services/availability.service.js';
+import { sendDueReminders } from './services/reservation.service.js';
 import rateLimit from 'express-rate-limit';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -84,6 +85,11 @@ const holdCleanup = setInterval(() => {
 }, 60 * 1000);
 holdCleanup.unref();
 
+const reminderJob = setInterval(() => {
+	sendDueReminders().catch((error) => console.error('ارسال یادآوری‌ها ناموفق بود:', error));
+}, 5 * 60 * 1000);
+reminderJob.unref();
+
 const server = app.listen(config.port, () => {
 	console.log(`Roof Reservation running on ${config.appUrl}`);
 	console.log(`NODE_ENV=${config.nodeEnv} → کوکی‌ها secure=${config.isProd} (روی http فقط با secure=false کار می‌کنن)`);
@@ -95,6 +101,7 @@ async function shutdown(signal) {
 	if (shuttingDown) return;
 	shuttingDown = true;
 	clearInterval(holdCleanup);
+	clearInterval(reminderJob);
 	console.log(`${signal} دریافت شد؛ در حال بستن امنِ سرور...`);
 	server.close(async () => {
 		await prisma.$disconnect();

@@ -59,9 +59,34 @@ function applyAvailabilityResult() {
 			state.availability?.exactMissingMessage || `${availableCount.toLocaleString('fa-IR')} میز مناسب روی نقشه روشن شد.`;
 		el('selectedDetail').innerHTML = '<h4>میزی انتخاب نشده</h4><p>روی یک میز روشن ضربه بزن تا جزئیاتش رو ببینی.</p>';
 	} else {
+		const suggestions = state.availability?.suggestions || [];
 		el('searchNotice').className = 'notice warn';
-		el('searchNotice').textContent = 'برای این ترکیب زمان و تعداد نفرات، میز آزادی پیدا نشد. زمان یا تاریخ نزدیک دیگری رو امتحان کن.';
-		el('selectedDetail').innerHTML = '<h4>گزینه‌ای پیدا نشد</h4><p>زمان، تاریخ یا مدت رزرو رو تغییر بده تا نقشه دوباره بررسی بشه.</p>';
+		el('searchNotice').textContent = suggestions.length
+			? 'برای این ساعت میز آزادی نبود، ولی ساعت‌های نزدیک آزادن.'
+			: 'برای این ترکیب زمان و تعداد نفرات، میز آزادی پیدا نشد. زمان یا تاریخ نزدیک دیگری رو امتحان کن.';
+
+		if (suggestions.length) {
+			el('selectedDetail').innerHTML =
+				'<h4>ساعت‌های نزدیک آزاد</h4><p>یکی رو انتخاب کن تا همون لحظه بررسی بشه.</p><div class="chip-row" id="suggestionRow"></div>';
+			const row = el('suggestionRow');
+			suggestions.forEach((item) => {
+				const button = document.createElement('button');
+				button.type = 'button';
+				button.className = 'chip';
+				button.textContent = `${item.startTime} تا ${item.endTime}`;
+				button.addEventListener('click', () => {
+					el('startTime').value = item.startTime;
+					clearSelection();
+					clearTimeout(liveSearchTimer);
+					el('searchNotice').className = 'notice';
+					el('searchNotice').textContent = 'در حال بررسی...';
+					runAvailabilitySearch();
+				});
+				row.appendChild(button);
+			});
+		} else {
+			el('selectedDetail').innerHTML = '<h4>گزینه‌ای پیدا نشد</h4><p>زمان، تاریخ یا مدت رزرو رو تغییر بده تا نقشه دوباره بررسی بشه.</p>';
+		}
 	}
 }
 
@@ -236,13 +261,38 @@ function renderCombos() {
 }
 
 /* ---------- reserve modal ---------- */
-function openReserveModal() {
-	if (!state.selectedTableIds.length) return;
+function decorationPrice() {
+	return Number(state.config?.settings?.decorationPrice || 0);
+}
+
+function updateModalSummary() {
 	const guests = Number(el('guestCount').value);
-	const price = state.config.settings.pricePerGuest * guests;
+	const base = state.config.settings.pricePerGuest * guests;
+	const extra = el('decorationToggle').checked ? decorationPrice() : 0;
 	el('modalSummary').className = 'notice';
 	el('modalSummary').innerHTML =
-		`${escapeHtml(state.selectedLabel)}<br>تعداد نفرات: ${guests.toLocaleString('fa-IR')}<br>مبلغ: ${escapeHtml(toman(price))}`;
+		`${escapeHtml(state.selectedLabel)}<br>تعداد نفرات: ${guests.toLocaleString('fa-IR')}` +
+		(extra ? `<br>تزئین: ${escapeHtml(toman(extra))}` : '') +
+		`<br>مبلغ کل: ${escapeHtml(toman(base + extra))}`;
+}
+
+function openReserveModal() {
+	if (!state.selectedTableIds.length) return;
+
+	// قیمت صفر یعنی ادمین این قابلیت رو خاموش کرده
+	const price = decorationPrice();
+	el('decorationField').hidden = price <= 0;
+	if (price <= 0) el('decorationToggle').checked = false;
+	el('decorationLabel').textContent = `تزئین میز (+${toman(price)})`;
+	el('decorationNoteField').hidden = !el('decorationToggle').checked;
+
+	const holdMinutes = Number(state.config?.settings?.holdMinutes || 10);
+	const cancelMinutes = Number(state.config?.settings?.minCancelMinutes || 120);
+	el('reservePolicy').textContent =
+		`میز تا ${holdMinutes.toLocaleString('fa-IR')} دقیقه برای شما نگه داشته می‌شه.` +
+		` لغو یا تغییر رزرو تا ${Math.round(cancelMinutes / 60).toLocaleString('fa-IR')} ساعت قبل از شروع ممکنه.`;
+
+	updateModalSummary();
 	if (state.currentUser) {
 		el('customerName').value = state.currentUser.name || '';
 		el('customerPhone').value = state.currentUser.phone || '';
@@ -251,6 +301,11 @@ function openReserveModal() {
 }
 
 el('closeModal').addEventListener('click', () => el('reserveModal').classList.remove('open'));
+el('decorationToggle').addEventListener('change', () => {
+	el('decorationNoteField').hidden = !el('decorationToggle').checked;
+	if (!el('decorationToggle').checked) el('decorationNote').value = '';
+	updateModalSummary();
+});
 document.addEventListener('keydown', (event) => {
 	if (event.key === 'Escape') el('reserveModal').classList.remove('open');
 });
@@ -307,6 +362,8 @@ el('reserveForm').addEventListener('submit', async (event) => {
 			guestCount: Number(el('guestCount').value),
 			customerName: el('customerName').value.trim(),
 			customerPhone: el('customerPhone').value.trim(),
+			decoration: el('decorationToggle').checked,
+			decorationNote: el('decorationNote').value.trim() || null,
 		};
 		const { reservation } = await api('/api/reservations/hold', { method: 'POST', body });
 		window.location.href = `/payment.html?id=${encodeURIComponent(reservation.id)}`;

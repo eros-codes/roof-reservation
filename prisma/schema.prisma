@@ -8,9 +8,8 @@ datasource db {
 }
 
 enum AdminRole {
-  OWNER
-  MANAGER
-  RECEPTION
+  MAIN
+  SECONDARY
 }
 
 enum ZoneKey {
@@ -96,7 +95,7 @@ model AdminUser {
   email        String    @unique
   name         String
   passwordHash String
-  role         AdminRole @default(RECEPTION)
+  role         AdminRole @default(SECONDARY)
   isActive     Boolean   @default(true)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -169,10 +168,16 @@ model Reservation {
   totalAmount        Int
   paidAmount         Int                 @default(0)
   refundStatus       RefundStatus        @default(NONE)
+  // مبلغ تزئین در لحظه‌ی رزرو ثبت می‌شه؛ اگه بعداً قیمتش عوض بشه
+  // فاکتورهای قدیمی دست‌نخورده می‌مونن. صفر یعنی تزئین انتخاب نشده.
+  decorationAmount   Int                 @default(0)
+  decorationNote     String?
   originalReservationId String?
   originalReservation   Reservation?     @relation("ReservationChange", fields: [originalReservationId], references: [id], onDelete: SetNull)
   changeRequests     Reservation[]       @relation("ReservationChange")
   notes              String?
+  // زمان ارسال یادآوری؛ خالی یعنی هنوز فرستاده نشده
+  reminderSentAt     DateTime?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   tables             ReservationTable[]
@@ -182,6 +187,7 @@ model Reservation {
   @@index([customerPhone])
   @@index([startAt, endAt])
   @@index([status])
+  @@index([status, startAt, reminderSentAt])
 }
 
 model ReservationTable {
