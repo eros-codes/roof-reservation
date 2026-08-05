@@ -4,7 +4,10 @@ import { ICONS, initHeaderScroll, escapeHtml, faHours, detailRow as row, tablesT
 initHeaderScroll();
 
 function icsDate(value) {
-	return new Date(value).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+	return new Date(value)
+		.toISOString()
+		.replace(/[-:]/g, '')
+		.replace(/\.\d{3}/, '');
 }
 
 function escapeIcs(text) {
@@ -18,7 +21,7 @@ function escapeIcs(text) {
 function downloadCalendarFile(reservation) {
 	const lines = [
 		'BEGIN:VCALENDAR',
-		'VEERSION:2.0',
+		'VERSION:2.0',
 		'PRODID:-//Roof//Reservation//FA',
 		'BEGIN:VEVENT',
 		`UID:${reservation.trackingCode}@roof`,
@@ -28,9 +31,9 @@ function downloadCalendarFile(reservation) {
 		`SUMMARY:${escapeIcs('رزرو میز در کافه Roof')}`,
 		`DESCRIPTION:${escapeIcs(`کد پیگیری: ${reservation.trackingCode}\nمیز ${tablesText(reservation)}\n${reservation.guestCount} نفر`)}`,
 		'BEGIN:VALARM',
-		'TRIGGER:-PT2H',
+		'TRIGGER:-PT3H',
 		'ACTION:DISPLAY',
-		`DESCRIPTION:${escapeIcs('دو ساعت تا رزرو کافه Roof')}`,
+		`DESCRIPTION:${escapeIcs('۳ ساعت تا رزرو کافه Roof')}`,
 		'END:VALARM',
 		'END:VEVENT',
 		'END:VCALENDAR',
@@ -66,7 +69,7 @@ const REFUND_STATUS_FA = {
 async function init() {
 	if (!id) throw new Error('شناسه فاکتور در آدرس پیدا نشد.');
 	box.innerHTML = '<div class="notice">در حال بارگذاری فاکتور…</div>';
-	const { reservation } = await api(`/api/reservations/${id}`);
+	const { reservation } = await api(`/api/reservations/${encodeURIComponent(id)}`);
 	const payment = reservation.payments?.[0] || {};
 
 	box.innerHTML = `

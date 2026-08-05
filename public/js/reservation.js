@@ -273,7 +273,7 @@ function updateModalSummary() {
 	el('modalSummary').innerHTML =
 		`${escapeHtml(state.selectedLabel)}<br>تعداد نفرات: ${guests.toLocaleString('fa-IR')}` +
 		(extra ? `<br>تزئین: ${escapeHtml(toman(extra))}` : '') +
-		`<br>مبلغ کل: ${escapeHtml(toman(base + extra))}`;
+		`<br>مبلغ کل (تقریبی): ${escapeHtml(toman(base + extra))}`;
 }
 
 function openReserveModal() {
@@ -307,7 +307,14 @@ el('decorationToggle').addEventListener('change', () => {
 	updateModalSummary();
 });
 document.addEventListener('keydown', (event) => {
-	if (event.key === 'Escape') el('reserveModal').classList.remove('open');
+	if (event.key !== 'Escape') return;
+	// اول مودال، بعد پنل جزئیات؛ هر بار فقط یکی بسته شود
+ 	if (el('reserveModal').classList.contains('open')) {
+ 		el('reserveModal').classList.remove('open');
+ 		return;
+ 	}
+ 	// sheet ممکنه وجود نداشته باشه در بعضی صفحات
+ 	sheet?.close();
 });
 el('reserveModal').addEventListener('click', (event) => {
 	if (event.target === el('reserveModal')) el('reserveModal').classList.remove('open');
@@ -351,6 +358,8 @@ el('reserveForm').addEventListener('submit', async (event) => {
 	event.preventDefault();
 	const submitButton = event.target.querySelector('button[type="submit"]');
 	submitButton.disabled = true;
+	// پاک کردن خطاهای قبلی تا روی هم انباشته نشن
+	el('reserveModal').querySelectorAll('.notice.danger').forEach((n) => n.remove());
 	try {
 		const startTime = selectedStartTime();
 		if (!startTime) throw new Error('ساعت شروع مشخص نشد؛ دوباره میز رو انتخاب کن.');
@@ -369,8 +378,14 @@ el('reserveForm').addEventListener('submit', async (event) => {
 		window.location.href = `/payment.html?id=${encodeURIComponent(reservation.id)}`;
 	} catch (error) {
 		submitButton.disabled = false;
-		el('modalSummary').className = 'notice danger';
-		el('modalSummary').textContent = error.message;
+		// خلاصه‌ی رزرو باید بماند؛ خطا زیر آن اضافه می‌شود نه به‌جای آن
+		updateModalSummary();
+		const errorBox = document.createElement('div');
+		errorBox.className = 'notice danger';
+		errorBox.style.marginTop = '8px';
+		errorBox.textContent = error.message;
+		el('modalSummary').after(errorBox);
+		setTimeout(() => errorBox.remove(), 8000);
 	}
 });
 

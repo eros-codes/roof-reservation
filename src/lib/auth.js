@@ -10,7 +10,11 @@ export function signGuestToken(payload) {
 }
 
 export function signAdminToken(admin) {
-	return jwt.sign({ sub: admin.id, email: admin.email, role: admin.role, type: 'admin' }, config.adminJwtSecret, { expiresIn: '12h' });
+	return jwt.sign(
+		{ sub: admin.id, email: admin.email, role: admin.role, ver: admin.tokenVersion ?? 0, type: 'admin' },
+		config.adminJwtSecret,
+		{ expiresIn: '12h' },
+	);
 }
 
 function verifyTyped(token, secret, expectedType) {

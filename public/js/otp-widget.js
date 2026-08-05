@@ -69,7 +69,15 @@ export function mountOtpWidget(container, { purpose, extraFields = [], submitLab
 		try {
 			stored = localStorage.getItem(cooldownStorageKey());
 		} catch (_) {}
-		if (stored && Number(stored) > Date.now()) runCooldown(btn, Number(stored));
+		if (stored && Number(stored) > Date.now()) {
+			runCooldown(btn, Number(stored));
+			return;
+		}
+		// شماره‌ی جدید شمارش قبلی را به ارث نمی‌برد؛ وگرنه دکمه بی‌دلیل قفل می‌ماند
+		clearInterval(cooldownTimer);
+		cooldownTimer = null;
+		btn.disabled = false;
+		btn.textContent = SEND_LABEL;
 	}
 
 	q('[data-otp-send]').addEventListener('click', async () => {
@@ -110,7 +118,8 @@ export function mountOtpWidget(container, { purpose, extraFields = [], submitLab
 		const btn = q('[data-otp-verify]');
 		btn.disabled = true;
 		try {
-			const data = await api('/api/otp/verify', { method: 'POST', body: { phone, code, purpose, ...extraPayload() } });
+			// فیلدهای اضافی اول قرار می‌گیرند تا نتوانند phone/code/purpose را بازنویسی کنند
+			const data = await api('/api/otp/verify', { method: 'POST', body: { ...extraPayload(), phone, code, purpose } });
 			showNotice('تایید شد.', 'ok');
 			onVerified?.(data);
 		} catch (error) {
@@ -122,5 +131,14 @@ export function mountOtpWidget(container, { purpose, extraFields = [], submitLab
 
 	// شماره ممکنه از قبل پر شده باشه؛ با هر تغییرش وضعیت شمارش دوباره بررسی می‌شه
 	q('[data-otp-phone]').addEventListener('input', restoreCooldown);
+
+	// Enter در فیلد کد یعنی تایید، و در فیلد شماره یعنی ارسال کد
+	q('[data-otp-code]').addEventListener('keydown', (event) => {
+		if (event.key === 'Enter') q('[data-otp-verify]').click();
+	});
+	q('[data-otp-phone]').addEventListener('keydown', (event) => {
+		if (event.key === 'Enter') q('[data-otp-send]').click();
+	});
+
 	restoreCooldown();
 }

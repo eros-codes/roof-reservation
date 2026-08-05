@@ -50,7 +50,7 @@ authRouter.post('/otp/send', otpSendLimiter, async (req, res, next) => {
 		const code = makeOtpCode();
 		const codeHash = await bcrypt.hash(code, 10);
 		const expiresAt = new Date(Date.now() + 2 * 60 * 1000);
-		await prisma.otpCode.create({
+		const createdOtp = await prisma.otpCode.create({
 			data: { phone, purpose, codeHash, expiresAt },
 		});
 		// پاک‌سازی کدهای منقضی/مصرف‌شده‌ی همین شماره تا جدول بی‌نهایت بزرگ نشود
@@ -67,7 +67,8 @@ authRouter.post('/otp/send', otpSendLimiter, async (req, res, next) => {
 		} catch (smsError) {
 			// کد ساخته شده ولی ارسال نشده؛ پاکش می‌کنیم تا تلاش بعدی کاربر تمیز باشد
 			console.error('ارسال کد تایید ناموفق بود:', smsError);
-			await prisma.otpCode.deleteMany({ where: { phone, purpose, consumedAt: null } }).catch(() => {});
+			// فقط همین کدی که الان ساخته شد پاک می‌شه، نه کدهای معتبر قبلی
+			await prisma.otpCode.delete({ where: { id: createdOtp.id } }).catch(() => {});
 			return res.status(503).json({ message: 'ارسال پیامک در حال حاضر ممکن نیست؛ کمی بعد دوباره تلاش کن.' });
 		}
 		res.json({
@@ -172,7 +173,9 @@ authRouter.get('/me', optionalUser, (req, res) => {
 
 authRouter.patch('/me', requireUser, async (req, res, next) => {
 	try {
-		const safeName = req.body?.name ? String(req.body.name).trim().slice(0, 80) : null;
+		const safeName = req.body?.name ? String(req.body.name).trim().slice(0, 80) : '';
+		// نام برای پیگیری رزرو ضروریه؛ نباید بشه خالیش کرد
+		if (!safeName) return res.status(400).json({ message: 'نام نمی‌تواند خالی باشد.' });
 		const user = await prisma.user.update({
 			where: { id: req.user.id },
 			data: { name: safeName },
@@ -197,7 +200,8 @@ authRouter.post('/logout', optionalUser, async (req, res) => {
 
 authRouter.post('/admin/login', adminLoginLimiter, async (req, res, next) => {
 	try {
-		const email = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
+		// باید با toLowerCase موقع ساخت ادمین هماهنگ باشه، وگرنه ورود شکست می‌خوره
+		const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
 		const password = typeof req.body?.password === 'string' ? req.body.password : '';
 		if (!email || !password) return res.status(400).json({ message: 'ایمیل و رمز عبور لازم است.' });
 

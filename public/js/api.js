@@ -9,7 +9,8 @@ export async function api(path, options = {}) {
 	let data = {};
 	if (text) {
 		try {
-			data = JSON.parse(text);
+			// JSON.parse('null') === null; normalize to object because callers expect an object
+			data = JSON.parse(text) ?? {};
 		} catch {
 			if (res.ok) console.warn('پاسخ سرور JSON معتبر نبود');
 		}

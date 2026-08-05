@@ -22,7 +22,7 @@ export async function mountAdminMapEditor({ container, tables = [], connections 
           <button type="button" data-map-action="reset" aria-label="نمایش کامل نقشه">⌂</button>
         </div>
       </div>
-      <p class="editor-help">${canEdit ? 'روی میز دابل‌کلیک کن تا ویرایش/حذفش کنی؛ برای جابه‌جایی بگیر و بکش — همون لحظه‌ی رهاکردن ذخیره می‌شه.' : 'نقشه فقط در حالت مشاهده است؛ نقش پذیرش اجازه تغییر میزها رو نداره.'}</p>
+	<p class="editor-help">${canEdit ? 'روی میز دابل‌کلیک کن تا ویرایش/حذفش کنی؛ برای جابه‌جایی بگیر و بکش — همون لحظه‌ی رهاکردن ذخیره می‌شه.' : 'نقشه فقط در حالت مشاهده است؛ حساب شما اجازه‌ی تغییر میزها را ندارد.'}</p>
       <div data-editor-notice></div>
     </section>
   `;

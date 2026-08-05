@@ -14,6 +14,7 @@ const settings = [
 	['holdMinutes', '10'],
 	['pricePerGuest', '100000'],
 	['decorationPrice', '100000'],
+	['maxComboTables', '4'],
 	['currencyLabel', 'تومان'],
 	['reminderBeforeMinutes', '180'],
 	['cafeName', 'Roof'],
@@ -34,7 +35,7 @@ async function main() {
 		});
 	}
 
-	const email = process.env.SEED_ADMIN_EMAIL || 'admin@roof.local';
+	const email = (process.env.SEED_ADMIN_EMAIL || 'admin@roof.local').trim().toLowerCase();
 	const password = process.env.SEED_ADMIN_PASSWORD || 'Admin123456';
 	const name = process.env.SEED_ADMIN_NAME || 'Roof Owner';
 	const passwordHash = await bcrypt.hash(password, 10);

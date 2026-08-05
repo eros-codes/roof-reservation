@@ -110,6 +110,10 @@ adminRouter.get('/reservations', async (req, res, next) => {
 			if (!VALID_STATUSES.includes(req.query.status)) {
 				return res.status(400).json({ message: 'وضعیت نامعتبر است.' });
 			}
+			// فیلتر و وضعیت هم‌زمان یعنی درخواست متناقض؛ بی‌صدا یکی را نادیده نگیریم
+			if (req.query.filter && req.query.filter !== 'all') {
+				return res.status(400).json({ message: 'فیلتر و وضعیت را هم‌زمان نمی‌توان فرستاد.' });
+			}
 			where.status = req.query.status;
 		}
 		if (req.query.from || req.query.to) {
@@ -126,7 +130,7 @@ adminRouter.get('/reservations', async (req, res, next) => {
 				where.startAt[op] = parsed;
 			}
 		}
-		const take = Math.min(Number(req.query.limit) || 100, 200);
+		const take = Math.min(Math.max(Number(req.query.limit) || 100, 1), 200);
 		const skip = Math.max(Number(req.query.offset) || 0, 0);
 		const [reservations, total] = await Promise.all([
 			prisma.reservation.findMany({
@@ -155,6 +159,8 @@ adminRouter.post('/reservations/manual', async (req, res, next) => {
 			customerName: req.body.customerName,
 			customerPhone: normalizePhone(req.body.customerPhone),
 			userId: null,
+			decoration: req.body.decoration === true,
+			decorationNote: req.body.decorationNote,
 		});
 		await sendMockSms({
 			phone: reservation.customerPhone,
@@ -174,7 +180,7 @@ adminRouter.patch('/reservations/:id/status', async (req, res, next) => {
 		const allowedForSecondary = ['COMPLETED', 'NO_SHOW', 'CANCELLED'];
 		if (req.admin.role === 'SECONDARY' && !allowedForSecondary.includes(req.body.status)) {
 			return res.status(403).json({
-				message: 'پذیرش فقط می‌تواند completed، no_show یا cancelled ثبت کند.',
+				message: 'ادمین فرعی فقط می‌تواند وضعیت را روی تکمیل‌شده، عدم حضور یا لغو بگذارد.',
 			});
 		}
 		if (!ADMIN_SETTABLE_STATUSES.includes(req.body.status)) {
@@ -189,20 +195,25 @@ adminRouter.patch('/reservations/:id/status', async (req, res, next) => {
 		// اگر مشتری واقعاً پولی پرداخت کرده، لغو باید بدهی بازگشت وجه را ثبت کند
 		const owesRefund = req.body.status === 'CANCELLED' && existing.payments.length > 0;
 
-		const reservation = await prisma.reservation.update({
-			where: { id: req.params.id },
-			data: {
-				status: req.body.status,
-				notes: req.body.notes || undefined,
-				...(owesRefund ? { refundStatus: 'PENDING' } : {}),
-			},
-		});
-		if (owesRefund) {
-			await prisma.payment.updateMany({
-				where: { reservationId: reservation.id, status: 'PAID', isMock: false },
-				data: { status: 'REFUND_PENDING' },
-			});
-		}
+		// هر دو با هم یا هیچ‌کدام؛ وگرنه رکورد مالی متناقض می‌ماند
+		const [reservation] = await prisma.$transaction([
+			prisma.reservation.update({
+				where: { id: req.params.id },
+				data: {
+					status: req.body.status,
+					notes: req.body.notes || undefined,
+					...(owesRefund ? { refundStatus: 'PENDING' } : {}),
+				},
+			}),
+			...(owesRefund
+				? [
+					  prisma.payment.updateMany({
+						  where: { reservationId: req.params.id, status: 'PAID', isMock: false },
+						  data: { status: 'REFUND_PENDING' },
+					  }),
+				  ]
+				: []),
+		]);
 		if (req.body.status === 'CANCELLED') {
 			await sendMockSms({
 				phone: reservation.customerPhone,
@@ -376,6 +387,8 @@ const NUMBER_SETTING_BOUNDS = {
 	pricePerGuest: { min: 1, max: 100000000 },
 	// صفر مجازه و یعنی قابلیت تزئین کلاً خاموش
 	decorationPrice: { min: 0, max: 100000000 },
+    // حداکثر میزهای ترکیبی که پیشنهاد داده می‌شود
+    maxComboTables: { min: 2, max: 8 },
 	// صفر یعنی یادآوری خاموش؛ سقف یک هفته
 	reminderBeforeMinutes: { min: 0, max: 10080 },
 };
@@ -486,7 +499,8 @@ adminRouter.get('/reports/revenue', requireRole('MAIN'), async (_req, res, next)
 		const sevenDaysAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
 
 		// درآمد = هر پرداخت موفق، منهای رزروهای لغوشده
-		const paidWhere = { status: 'PAID', isMock: false, reservation: { status: { not: 'CANCELLED' } } };
+		// باید دقیقاً با کوئری داشبورد یکی باشه، وگرنه ادمین دو عدد متفاوت می‌بینه
+		const paidWhere = { status: 'PAID', reservation: { status: { not: 'CANCELLED' } } };
 
 		const [paid, counts, guestAgg, recentPayments, topTables] = await Promise.all([
 			prisma.payment.aggregate({ where: paidWhere, _sum: { amount: true }, _count: true }),
@@ -552,12 +566,14 @@ adminRouter.get('/reports/revenue', requireRole('MAIN'), async (_req, res, next)
 	}
 });
 
-adminRouter.get('/users', requireRole('MAIN'), async (_req, res, next) => {
+adminRouter.get('/users', requireRole('MAIN'), async (req, res, next) => {
 	try {
+		const take = Math.min(Math.max(Number(req.query.limit) || 100, 1), 200);
+		const skip = Math.max(Number(req.query.offset) || 0, 0);
 		const users = await prisma.user.findMany({
 			orderBy: { createdAt: 'desc' },
-			take: Math.min(Number(req.query.limit) || 100, 200),
-			skip: Math.max(Number(req.query.offset) || 0, 0),
+			take,
+			skip,
 			include: { _count: { select: { reservations: true } } },
 		});
 		res.json({ users });
@@ -653,6 +669,8 @@ adminRouter.patch('/admins/:id', requireRole('MAIN'), async (req, res, next) => 
 		if (req.body.password !== undefined) {
 			if (String(req.body.password).length < 8) return res.status(400).json({ message: 'رمز عبور باید حداقل ۸ کاراکتر باشد.' });
 			data.passwordHash = await bcrypt.hash(String(req.body.password), 10);
+			// نشست‌های باز با رمز قدیمی باید فوراً قطع شن
+			data.tokenVersion = { increment: 1 };
 		}
 
 		const admin = await prisma.adminUser.update({ where: { id: req.params.id }, data });

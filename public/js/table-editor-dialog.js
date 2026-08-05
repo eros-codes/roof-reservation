@@ -543,7 +543,7 @@ export function mountTableEditorDialog({ onSaved, onDeleted, getConnections, get
 				el(
 					'div',
 					{ class: 'field' },
-					el('label', {}, 'شماره نمایشی (اختیاری)'),
+					el('label', {}, 'شماره نمایشی (خالی = خودکار)'),
 					el('input', {
 						'data-field': 'displayNumber',
 						value: t.displayNumber || '',
@@ -705,6 +705,7 @@ export function mountTableEditorDialog({ onSaved, onDeleted, getConnections, get
 			notice.textContent = 'شماره‌ی نمایشی میز نمی‌تونه خالی باشه.';
 			return;
 		}
+		// خالی بذاری، سرور از روی کد میز شماره می‌سازه
 		const body = {
 			zone: field('zone').value,
 			shape: field('shape').value,
@@ -727,6 +728,11 @@ export function mountTableEditorDialog({ onSaved, onDeleted, getConnections, get
 			notice.textContent = 'حداقل نفرات نمی‌تونه از حداکثر بیشتر باشه.';
 			return;
 		}
+		if (body.maxGuests > body.capacity) {
+			notice.className = 'notice danger';
+			notice.textContent = `حداکثر نفرات نمی‌تونه از تعداد صندلی‌ها (${body.capacity}) بیشتر باشه.`;
+			return;
+		}
 		try {
 			box.querySelector('[type="submit"]').disabled = true;
 			if (mode === 'create') {
@@ -746,9 +752,11 @@ export function mountTableEditorDialog({ onSaved, onDeleted, getConnections, get
 				await onSaved?.(created?.id);
 				close();
 			} else {
+				// اگر شکل عوض شده، ابعاد هم باید با شکل جدید هماهنگ بشه
+				const shapeChanged = editingTable.shape !== body.shape;
 				await api(`/api/admin/tables/${editingTable.id}`, {
 					method: 'PATCH',
-					body,
+					body: shapeChanged ? { ...body, ...shapeDims(body.shape) } : body,
 				});
 				await onSaved?.(editingTable.id);
 				close();

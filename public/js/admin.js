@@ -188,7 +188,7 @@ async function loadReservations({ append = false } = {}) {
 	if (!append) {
 		el('reservationBox').innerHTML = '<div class="skeleton" style="height:180px"></div>';
 		allReservations = [];
-		renderReservationTabs();
+		await renderReservationTabs();
 	}
 	let reservations;
 	let total;
@@ -244,7 +244,11 @@ async function loadReservations({ append = false } = {}) {
 				const notice = el('reservationsNotice');
 				try {
 					await api(`/api/admin/reservations/${select.dataset.status}/status`, { method: 'PATCH', body: { status: select.value } });
-					await Promise.all([loadReservations(), loadDashboard()]);
+					if (isMain()) {
+						await Promise.all([loadReservations(), loadDashboard()]);
+					} else {
+						await loadReservations();
+					}
 				} catch (error) {
 					notice.className = 'notice danger';
 					notice.textContent = error.message;
@@ -297,13 +301,19 @@ async function createManual() {
 				guestCount: Number(el('mGuests').value),
 				customerName: el('mName').value.trim(),
 				customerPhone: el('mPhone').value.trim(),
+					decoration: el('mDecoration')?.checked || false,
+					decorationNote: el('mDecorationNote')?.value.trim() || null,
 			},
 		});
 		notice.className = 'notice ok';
 		notice.textContent = `رزرو دستی ثبت شد: ${reservation.trackingCode}`;
-		state.manualSelected = [];
-		renderTablePicker();
-		await Promise.all([loadReservations(), loadDashboard()]);
+			state.manualSelected = [];
+			renderTablePicker();
+			if (isMain()) {
+				await Promise.all([loadReservations(), loadDashboard()]);
+			} else {
+				await loadReservations();
+			}
 	} catch (error) {
 		notice.className = 'notice danger';
 		notice.textContent = error.message;
@@ -312,6 +322,15 @@ async function createManual() {
 
 el('createManual').addEventListener('click', createManual);
 el('addTableBtn').addEventListener('click', () => state.mapEditor?.openCreateDialog?.());
+
+// show/hide decoration note field in manual booking
+const mDecEl = el('mDecoration');
+if (mDecEl) {
+	mDecEl.addEventListener('change', () => {
+		el('mDecorationNoteField').hidden = !mDecEl.checked;
+		if (!mDecEl.checked) el('mDecorationNote').value = '';
+	});
+}
 
 /* ---------- tables + map management ---------- */
 function renderTableList() {
@@ -528,7 +547,8 @@ async function loadSettings() {
 	el('saveSettings').addEventListener('click', async () => {
 		const body = {};
 		SETTINGS_FIELDS.forEach(([key]) => {
-			body[key] = el(`set-${key}`).value;
+			const value = el(`set-${key}`).value.trim();
+			if (value !== '') body[key] = value;
 		});
 		try {
 			await api('/api/admin/settings', { method: 'PATCH', body });
@@ -738,6 +758,13 @@ async function init() {
 		? { hours: loadHours, closures: loadClosures, settings: loadSettings, reports: loadReports, admins: loadAdmins }
 		: {};
 	const loaded = new Set();
+
+	// Ensure the currently active section triggers its lazy loader (renderMenu() may have activated it earlier)
+	const activeKey = el('adminMenu').querySelector('button.active')?.dataset.section;
+	if (activeKey && lazyLoaders[activeKey] && !loaded.has(activeKey)) {
+		loaded.add(activeKey);
+		lazyLoaders[activeKey]();
+	}
 	el('adminMenu').addEventListener('click', (event) => {
 		const key = event.target.closest('button')?.dataset.section;
 		if (key && lazyLoaders[key] && !loaded.has(key)) {

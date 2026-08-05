@@ -16,7 +16,9 @@ const paymentRequestLimiter = rateLimit({
 export const paymentRouter = express.Router();
 
 function isPayable(reservation) {
-	if (['CONFIRMED', 'CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(reservation.status)) return false;
+	// PAYMENT_REVIEW یعنی پول قبلاً گرفته شده و منتظر بررسی دستیه؛
+	// اجازه‌ی پرداخت دوباره یعنی دو بار پول گرفتن از مشتری
+	if (['CONFIRMED', 'CANCELLED', 'COMPLETED', 'NO_SHOW', 'PAYMENT_REVIEW', 'EXPIRED'].includes(reservation.status)) return false;
 	if (reservation.holdExpiresAt && reservation.holdExpiresAt < new Date()) return false;
 	return true;
 }
@@ -118,7 +120,20 @@ paymentRouter.get('/callback', async (req, res) => {
 			return redirectTo(reservation.id, 'fail');
 		}
 
-		const verify = await verifyZarinpalPayment({ amount: reservation.totalAmount, authority });
+		let verify;
+		try {
+			verify = await verifyZarinpalPayment({ amount: reservation.totalAmount, authority });
+		} catch (verifyError) {
+			// ممکنه پول گرفته شده باشه ولی جواب به ما نرسیده؛ حتماً باید رد بمونه
+			console.error('تایید پرداخت نزد زرین‌پال شکست خورد (وضعیت پرداخت نامعلوم):', verifyError);
+			await prisma.payment
+				.updateMany({ where: { reservationId: reservation.id, status: { in: ['PENDING', 'FAILED'] } }, data: { status: 'REVIEW' } })
+				.catch((e) => console.error('ثبت وضعیت REVIEW ناموفق بود:', e));
+			await prisma.reservation
+				.update({ where: { id: reservation.id }, data: { status: 'PAYMENT_REVIEW' } })
+				.catch((e) => console.error('ثبت وضعیت PAYMENT_REVIEW ناموفق بود:', e));
+			return redirectTo(reservation.id, 'review');
+		}
 		if (!verify.ok) {
 			await prisma.payment.updateMany({
 				where: { reservationId: reservation.id, status: { in: ['PENDING', 'REVIEW'] } },

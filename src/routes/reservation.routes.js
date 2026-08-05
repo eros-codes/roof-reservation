@@ -5,9 +5,17 @@ import { optionalUser, requireUser } from '../middleware/auth.js';
 import { canChangeOrCancel, cancelReservation, createReservationHold, getReservationFull } from '../services/reservation.service.js';
 import { sendMockSms } from '../lib/sms.js';
 import { setCookie, signGuestToken, verifyGuestToken } from '../lib/auth.js';
+import rateLimit from 'express-rate-limit';
+
+// هر HOLD میزها را تا چند دقیقه قفل می‌کند، پس باید محدود باشد
+const holdLimiter = rateLimit({
+	windowMs: 10 * 60 * 1000,
+	max: 10,
+	message: { message: 'تعداد درخواست رزرو بیش از حد مجاز است؛ کمی بعد دوباره تلاش کن.' },
+});
 export const reservationRouter = express.Router();
 
-reservationRouter.post('/hold', optionalUser, async (req, res, next) => {
+reservationRouter.post('/hold', holdLimiter, optionalUser, async (req, res, next) => {
 	try {
 		const payload = req.body;
 		const reservation = await createReservationHold({
@@ -68,17 +76,8 @@ reservationRouter.post('/:id/cancel', optionalUser, async (req, res, next) => {
 	try {
 		const reservation = await getReservationFull(req.params.id);
 		if (!reservation) return res.status(404).json({ message: 'رزرو پیدا نشد.' });
-		const allowedUser = req.user && reservation.userId === req.user.id;
-		let allowedGuest = false;
-		if (req.cookies?.guestToken) {
-			try {
-				allowedGuest = verifyGuestToken(req.cookies.guestToken).reservationId === reservation.id;
-			} catch {
-				allowedGuest = false;
-			}
-		}
-		if (!allowedUser && !allowedGuest) {
-			return res.status(403).json({ message: 'برای تغییر رزرو باید مالک رزرو باشید.' });
+		if (!hasReservationAccess(req, reservation)) {
+			return res.status(403).json({ message: 'برای لغو رزرو باید مالک رزرو باشید.' });
 		}
 		const updated = await cancelReservation(reservation.id, req.body.note || 'لغو توسط مشتری');
 
@@ -88,7 +87,7 @@ reservationRouter.post('/:id/cancel', optionalUser, async (req, res, next) => {
 	}
 });
 
-reservationRouter.post('/:id/change/hold', optionalUser, async (req, res, next) => {
+reservationRouter.post('/:id/change/hold', holdLimiter, optionalUser, async (req, res, next) => {
 	try {
 		const original = await getReservationFull(req.params.id);
 		if (!original) return res.status(404).json({ message: 'رزرو اصلی پیدا نشد.' });
@@ -106,7 +105,6 @@ reservationRouter.post('/:id/change/hold', optionalUser, async (req, res, next) 
 		// تزئین رزرو اصلی باید به رزرو جدید منتقل بشه، وگرنه هم از قلم می‌افته
 		// هم محاسبه‌ی مابه‌التفاوت اشتباه می‌شه
 		const keepsDecoration = original.decorationAmount > 0;
-		const newTotal = original.pricePerGuest * nextGuestCount + original.decorationAmount;
 		const change = await createReservationHold({
 			tableIds: req.body.tableIds,
 			date: req.body.date,
@@ -121,6 +119,10 @@ reservationRouter.post('/:id/change/hold', optionalUser, async (req, res, next) 
 			decoration: keepsDecoration,
 			decorationNote: original.decorationNote,
 		});
+
+		// مبلغ واقعیِ ثبت‌شده ملاک است، نه محاسبه‌ی دستی؛ وگرنه اگر قیمت‌ها
+		// از زمان رزرو اولیه عوض شده باشند، paidAmount با totalAmount نمی‌خواند
+		const newTotal = change.totalAmount;
 
 		if (newTotal === oldTotal) {
 			const [, confirmedChange] = await prisma.$transaction([

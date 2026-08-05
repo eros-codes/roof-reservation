@@ -54,8 +54,9 @@ function renderSuccess() {
       <div class="tracking-code">${escapeHtml(reservation.trackingCode)}</div>
 
     </div>`;
+	// replace so this transient page doesn't remain in history and trap Back
 	setTimeout(() => {
-		location.href = `/invoice.html?id=${encodeURIComponent(reservation.id)}`;
+		location.replace(`/invoice.html?id=${encodeURIComponent(reservation.id)}`);
 	}, 1400);
 }
 
@@ -88,7 +89,7 @@ function render() {
       ${row(ICONS.table, 'میز', tablesText(reservation))}
       ${row(ICONS.clock, 'زمان', `${faDateTime(reservation.startAt)} تا ${endTimeText(reservation)}`)}
       ${row(ICONS.users, 'تعداد نفرات', Number(reservation.guestCount || 0).toLocaleString('fa-IR'))}
-      ${reservation.decorationAmount > 0 ? row(ICONS.check, 'تزئین میز', `${toman(reservation.decorationAmount)}${reservation.decorationNote ? ` · ${escapeHtml(reservation.decorationNote)}` : ''}`) : ''}
+			${reservation.decorationAmount > 0 ? row(ICONS.check, 'تزئین میز', `${toman(reservation.decorationAmount)}${reservation.decorationNote ? ` · ${reservation.decorationNote}` : ''}`) : ''}
       <div class="amount-row"><span>مبلغ قابل پرداخت</span><strong>${toman(reservation.totalAmount)}</strong></div>
     </div>
 
@@ -131,7 +132,7 @@ async function pay() {
 		if (!paymentUrl) throw new Error('درگاه پرداخت در دسترس نیست.');
 		location.href = paymentUrl;
 	} catch (error) {
-		btn.disabled = false;
+		// renderFail replaces the content, so re-enabling the button is unnecessary
 		renderFail(error.message);
 	}
 }
@@ -139,7 +140,7 @@ async function pay() {
 async function init() {
 	if (!id) return renderInvalid('شناسه رزرو در آدرس صفحه پیدا نشد.');
 	box.innerHTML = '<div class="notice">در حال بارگذاری…</div>';
-	const { reservation: r } = await api(`/api/reservations/${id}`);
+	const { reservation: r } = await api(`/api/reservations/${encodeURIComponent(id)}`);
 	reservation = r;
 
 	// resultParam فقط یه‌بار مصرف می‌شه؛ وگرنه بعد از یه پرداخت ناموفق، دکمه‌ی

@@ -5,8 +5,13 @@ export function pad2(value) {
 }
 
 export function minutesToTime(totalMinutes) {
-	const h = Math.floor(totalMinutes / 60);
-	const m = totalMinutes % 60;
+	const total = Number(totalMinutes);
+	// بدون این محافظ، ورودی بزرگ‌تر از یک شبانه‌روز خروجی نامعتبری مثل "25:00" می‌سازه
+	if (!Number.isFinite(total) || total < 0 || total > 1439) {
+		throw new Error(`دقیقه خارج از محدوده‌ی یک شبانه‌روز است: ${totalMinutes}`);
+	}
+	const h = Math.floor(total / 60);
+	const m = total % 60;
 	return `${pad2(h)}:${pad2(m)}`;
 }
 
@@ -86,23 +91,6 @@ export function generateInvoiceNumber() {
 	return `INV-${randomDigits(9)}`;
 }
 
-export function toFaZone(zone) {
-	return { WINDOW: 'کنار پنجره', CENTER: 'وسط', ROOF: 'روف' }[zone] || zone;
-}
-
-export function toFaReservationStatus(status) {
-	return (
-		{
-			DRAFT: 'پیش‌نویس',
-			HOLD: 'رزرو موقت',
-			PAYMENT_PENDING: 'در انتظار پرداخت',
-			PAYMENT_REVIEW: 'نیازمند بررسی پرداخت',
-			CONFIRMED: 'تایید شده',
-			CHANGE_PENDING: 'در انتظار تغییر',
-			CANCELLED: 'لغو شده',
-			COMPLETED: 'انجام شده',
-			NO_SHOW: 'عدم حضور',
-			EXPIRED: 'منقضی شده',
-		}[status] || status
-	);
-}
+// Removed dead helpers `toFaZone` and `toFaReservationStatus` because they are unused
+// and their translations differ from other parts of the project. If needed,
+// reintroduce a single canonical implementation used across the codebase.

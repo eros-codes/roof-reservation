@@ -1,38 +1,38 @@
 {
-  "name": "roof-reservation",
-  "version": "1.0.0",
-  "description": "Luxury RTL reservation system for Roof cafe with data-driven map, PostgreSQL, Prisma, Express, HTML/CSS/Vanilla JS.",
-  "main": "src/server.js",
-  "type": "module",
-  "scripts": {
-    "dev": "nodemon src/server.js",
-    "start": "node src/server.js",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio",
-    "db:seed": "node prisma/seed.js",
-    "check": "node --check src/server.js",
-    "lint": "node --check src/server.js && node --check src/lib/prisma.js && node --check src/routes/auth.routes.js && node --check src/services/reservation.service.js && node --check src/services/availability.service.js && node --check src/lib/http-error.js && node --check public/js/ui.js && node --check public/js/payment.js && node --check public/js/profile.js",
-    "test": "node --test"
-  },
-  "dependencies": {
-    "@prisma/client": "^5.22.0",
-    "bcryptjs": "^2.4.3",
-    "cookie-parser": "^1.4.7",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.7",
-    "express": "^4.21.2",
-    "express-rate-limit": "^7.4.1",
-    "helmet": "^8.0.0",
-    "jsonwebtoken": "^9.0.2",
-    "morgan": "^1.10.0",
-    "zod": "^3.24.1"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.9",
-    "prisma": "^5.22.0"
-  },
-  "prisma": {
-    "seed": "node prisma/seed.js"
-  }
+	"name": "roof-reservation",
+	"version": "1.0.0",
+	"description": "Luxury RTL reservation system for Roof cafe with data-driven map, PostgreSQL, Prisma, Express, HTML/CSS/Vanilla JS.",
+	"main": "src/server.js",
+	"type": "module",
+	"scripts": {
+		"dev": "nodemon src/server.js",
+		"start": "node src/server.js",
+		"prisma:generate": "prisma generate",
+		"prisma:migrate": "prisma migrate dev",
+		"prisma:studio": "prisma studio",
+		"db:seed": "node prisma/seed.js",
+		"check": "node --check src/server.js",
+		"lint": "node --check src/server.js && node --check src/lib/prisma.js && node --check src/routes/auth.routes.js && node --check src/services/reservation.service.js && node --check src/services/availability.service.js && node --check src/lib/http-error.js && node --check public/js/ui.js && node --check public/js/payment.js && node --check public/js/profile.js",
+		"test": "node --test"
+	},
+	"dependencies": {
+		"@prisma/client": "^5.22.0",
+		"bcryptjs": "^2.4.3",
+		"cookie-parser": "^1.4.7",
+		"cors": "^2.8.5",
+		"dotenv": "^16.4.7",
+		"express": "^4.21.2",
+		"express-rate-limit": "^7.4.1",
+		"helmet": "^8.0.0",
+		"jsonwebtoken": "^9.0.2",
+		"morgan": "^1.10.0",
+		"zod": "^3.24.1"
+	},
+	"devDependencies": {
+		"nodemon": "^3.1.9",
+		"prisma": "^5.22.0"
+	},
+	"prisma": {
+		"seed": "node prisma/seed.js"
+	}
 }

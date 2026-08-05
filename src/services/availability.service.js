@@ -2,6 +2,7 @@ import { prisma } from '../lib/prisma.js';
 import { addDays, addMinutes, combineDateAndTime, makeTimeSlots, overlapWithBuffer, timeToMinutes } from '../lib/time.js';
 import { getSettings, numberSetting } from './settings.service.js';
 import { createHttpError } from '../lib/http-error.js';
+import { CANCEL_WINDOW_MINUTES } from '../lib/constants.js';
 
 const BLOCKING_STATUSES = ['HOLD', 'PAYMENT_PENDING', 'PAYMENT_REVIEW', 'CONFIRMED', 'CHANGE_PENDING'];
 
@@ -38,7 +39,7 @@ export async function getPublicConfig() {
 			holdMinutes: numberSetting(settings, 'holdMinutes', 10),
 			pricePerGuest: numberSetting(settings, 'pricePerGuest', 100000),
 			decorationPrice: numberSetting(settings, 'decorationPrice', 0, { min: 0 }),
-			minCancelMinutes: 120,
+			minCancelMinutes: CANCEL_WINDOW_MINUTES,
 			currencyLabel: settings.currencyLabel || 'تومان',
 		},
 		dates,
@@ -200,9 +201,6 @@ function tableAvailabilityForStart({
 	};
 }
 
-// همه‌ی گروه‌های همبندِ میزها رو پیدا می‌کنه (اندازه‌ی ۲ به بالا).
-// «همبند» یعنی گروه از طریق اتصال‌های واقعی به هم وصله؛ مثلاً اگر ۸ و ۱۰ فقط
-// از راه ۹ به هم می‌رسن، {۸,۱۰} گروه معتبری نیست ولی {۸,۹,۱۰} هست.
 function enumerateConnectedGroups({ tables, connectionRows, guestCount, maxTables = 4, maxGroups = 60 }) {
 	const byId = new Map(tables.map((t) => [t.id, t]));
 	const neighbors = new Map(tables.map((t) => [t.id, new Set()]));
@@ -217,8 +215,6 @@ function enumerateConnectedGroups({ tables, connectionRows, guestCount, maxTable
 
 	const groups = [];
 	const seen = new Set();
-	// چون اضافه‌کردن هر میز، جمعِ حداقل‌ها رو بالا می‌بره، گروهی که حداقلش
-	// به تعداد نفرات رسیده دیگه جا برای بزرگ‌تر شدن نداره و شاخه‌اش بسته می‌شه
 	let frontier = [...byId.keys()].map((id) => [id]).filter((g) => sumMin(g) < guestCount);
 
 	while (frontier.length && groups.length < maxGroups) {
@@ -261,7 +257,6 @@ function comboAvailabilityForStart({
 	check: precomputedCheck = null,
 }) {
 	if (!Array.isArray(groupTables) || groupTables.length < 2) return null;
-	// نتیجه‌ی این بررسی به میزها بستگی ندارد؛ اگر از بیرون داده شده باشد دوباره حساب نمی‌شود
 	const check =
 		precomputedCheck ||
 		validateTimeWindow({
@@ -274,7 +269,6 @@ function comboAvailabilityForStart({
 	if (!check.ok) return null;
 	if (groupTables.some((t) => !t.isActive)) return null;
 
-	// حداقل و حداکثرِ گروه = جمع حداقل‌ها و جمع حداکثرهای همه‌ی میزها
 	const combinedMin = groupTables.reduce((s, t) => s + (t.minGuests || 1), 0);
 	const combinedMax = groupTables.reduce((s, t) => s + (t.maxGuests || 0), 0);
 	const combinedCapacity = groupTables.reduce((s, t) => s + (t.capacity || 0), 0);
@@ -303,8 +297,8 @@ function comboAvailabilityForStart({
 	};
 }
 
-export async function getAvailability({ date, guestCount, durationMinutes, startTime, rangeStart, rangeEnd }, client = prisma) {
-	if (client === prisma) await expireOldHolds(client);
+export async function getAvailability({ date, guestCount, durationMinutes, startTime, rangeStart, rangeEnd }, options = {}, client = prisma) {
+	// expireOldHolds intentionally omitted here: callers should allow background cleanup
 	const settings = await getSettings();
 	const interval = numberSetting(settings, 'slotIntervalMinutes', 15, { min: 1 });
 	const { tables, connections: connectionRows } = await getTablesWithConnections(client);
@@ -374,15 +368,16 @@ export async function getAvailability({ date, guestCount, durationMinutes, start
 		tableResults.push({ ...table, availability: best });
 	}
 
-	// ترکیب‌ها همیشه محاسبه می‌شن، حتی وقتی میز تکی هم آزاده —
-	// انتخاب بین «یک میز ۵ نفره» و «۲+۳ کنار هم» با خود کاربره
+	// ترکیب‌ها — قابل غیرفعال‌سازی برای بهبود عملکرد درون تراکنش
 	const combos = [];
-	const groups = enumerateConnectedGroups({
-		tables,
-		connectionRows,
-		guestCount,
-		maxTables: numberSetting(settings, 'maxComboTables', 4, { min: 2 }),
-	});
+	const groups = options.skipCombos
+		? []
+		: enumerateConnectedGroups({
+				tables,
+				connectionRows,
+				guestCount,
+				maxTables: numberSetting(settings, 'maxComboTables', 4, { min: 2 }),
+		  });
 	for (const group of groups) {
 		for (const slot of starts) {
 			const combo = comboAvailabilityForStart({
@@ -405,22 +400,18 @@ export async function getAvailability({ date, guestCount, durationMinutes, start
 		}
 	}
 
-	// ساده‌ترین گروه (کمترین میز) و نزدیک‌ترین ظرفیت اول پیشنهاد بشه
 	combos.sort((x, y) => x.tableIds.length - y.tableIds.length || Math.abs(x.capacity - guestCount) - Math.abs(y.capacity - guestCount));
 
-	// اگه برای ساعت خواسته‌شده هیچ گزینه‌ای نبود، نزدیک‌ترین ساعت‌های آزادِ همون روز
-	// پیشنهاد می‌شن تا کاربر به بن‌بست نخوره. فقط در حالت «ساعت دقیق» معنا داره،
-	// چون در حالت بازه، خودِ نتیجه از قبل همه‌ی اسلات‌ها رو پوشش داده.
+	// پیشنهادِ زمان‌های نزدیک، قابل غیرفعال‌سازی برای عملیات ثبت
 	const suggestions = [];
 	const nothingFound = !tableResults.some((t) => t.availability?.available) && combos.length === 0;
-	if (startTime && nothingFound) {
+	if (startTime && nothingFound && !options.skipSuggestions) {
 		const workingHour = workingHoursByDay[dayStart.getDay()];
 		if (workingHour && !workingHour.isClosed) {
 			const requestedMinutes = timeToMinutes(startTime);
 			const closesAt = timeToMinutes(workingHour.closesAt);
 			const daySlots = makeTimeSlots(workingHour.opensAt, workingHour.closesAt, interval)
 				.filter((slot) => slot !== startTime && timeToMinutes(slot) + durationMinutes <= closesAt)
-				// نزدیک‌ترین‌ها به ساعت درخواستی اول بررسی می‌شن
 				.sort((a, b) => Math.abs(timeToMinutes(a) - requestedMinutes) - Math.abs(timeToMinutes(b) - requestedMinutes));
 
 			for (const slot of daySlots) {
@@ -445,15 +436,13 @@ export async function getAvailability({ date, guestCount, durationMinutes, start
 				);
 				if (hasFreeTable) suggestions.push({ startTime: slot, endTime: check.endTime });
 			}
-			// برای نمایش، به‌ترتیب ساعت مرتب می‌شن نه به‌ترتیب نزدیکی
 			suggestions.sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
 		}
 	}
 
 	const hasPerfect = tableResults.some((t) => t.availability?.available && t.availability.matchType === 'perfect');
 	const hasSoft = tableResults.some((t) => t.availability?.available && t.availability.matchType === 'soft');
-	const exactMissingMessage =
-		!hasPerfect && hasSoft ? 'میز دقیق برای تعداد شما موجود نیست؛ نزدیک‌ترین میزهای قابل رزرو با سبز کمرنگ نمایش داده شده‌اند.' : null;
+	const exactMissingMessage = !hasPerfect && hasSoft ? 'میز دقیق برای تعداد شما موجود نیست؛ نزدیک‌ترین میزهای قابل رزرو با سبز کمرنگ نمایش داده شده‌اند.' : null;
 
 	return {
 		date,
@@ -474,14 +463,13 @@ export async function assertTablesAvailable({ tableIds, date, startTime, duratio
 			durationMinutes,
 			guestCount,
 		},
+		{},
 		client,
 	);
 	if (tableIds.length === 1) {
 		const table = availability.tables.find((t) => t.id === tableIds[0]);
 		if (!table?.availability?.available) throw createHttpError(400, table?.availability?.reason || 'میز در این زمان قابل رزرو نیست.');
 	} else {
-		// تطابق باید دقیق باشه نه زیرمجموعه‌ای، وگرنه انتخاب دو میز با یک ترکیبِ
-		// سه‌تایی هم جور در می‌آد و رزروی ثبت می‌شه که واقعاً معتبر نیست
 		const requested = [...tableIds].sort().join('|');
 		const combo = availability.combos.find((c) => [...c.tableIds].sort().join('|') === requested);
 		if (!combo) throw createHttpError(400, 'این ترکیب میز در این زمان قابل رزرو نیست.');

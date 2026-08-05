@@ -97,6 +97,8 @@ model AdminUser {
   passwordHash String
   role         AdminRole @default(SECONDARY)
   isActive     Boolean   @default(true)
+  // با هر تغییر رمز یکی زیاد می‌شه تا توکن‌های قبلی باطل بشن
+  tokenVersion Int       @default(0)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 }

@@ -1,4 +1,4 @@
-process.env.TZ = 'Asia/Tehran';
+import './timezone.js';
 import express from 'express';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -53,6 +53,8 @@ app.use(
 		message: { message: 'تعداد درخواست‌ها زیاد بود؛ کمی بعد دوباره تلاش کن.' },
 	}),
 );
+app.get('/health', (_req, res) => res.json({ ok: true, service: 'roof-reservation' }));
+
 app.use(
 	express.static(path.join(__dirname, '..', 'public'), {
 		maxAge: config.isProd ? '1d' : 0,
@@ -62,7 +64,9 @@ app.use(
 		},
 	}),
 );
-app.get('/health', (_req, res) => res.json({ ok: true, service: 'roof-reservation' }));
+// IMPORTANT: `authRouter` must be registered before `adminRouter` so that
+// routes like `/api/admin/login` implemented in `auth.routes.js` are
+// matched before `adminRouter`'s `requireAdmin` middleware runs.
 app.use('/api', authRouter);
 app.use('/api', publicRouter);
 app.use('/api/reservations', reservationRouter);
@@ -70,6 +74,8 @@ app.use('/api/payments', paymentRouter);
 app.use('/api/admin', adminRouter);
 app.use((req, res) => {
 	if (req.path.startsWith('/api')) return res.status(404).json({ message: 'مسیر API پیدا نشد.' });
+	// فقط GET باید به صفحه‌ی اصلی برگرده؛ بقیه‌ی متدها یعنی مسیر واقعاً وجود نداره
+	if (req.method !== 'GET') return res.status(404).json({ message: 'مسیر پیدا نشد.' });
 	res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
 });
 app.use((error, _req, res, _next) => {
@@ -85,9 +91,12 @@ const holdCleanup = setInterval(() => {
 }, 60 * 1000);
 holdCleanup.unref();
 
-const reminderJob = setInterval(() => {
-	sendDueReminders().catch((error) => console.error('ارسال یادآوری‌ها ناموفق بود:', error));
-}, 5 * 60 * 1000);
+const reminderJob = setInterval(
+	() => {
+		sendDueReminders().catch((error) => console.error('ارسال یادآوری‌ها ناموفق بود:', error));
+	},
+	5 * 60 * 1000,
+);
 reminderJob.unref();
 
 const server = app.listen(config.port, () => {
@@ -104,7 +113,7 @@ async function shutdown(signal) {
 	clearInterval(reminderJob);
 	console.log(`${signal} دریافت شد؛ در حال بستن امنِ سرور...`);
 	server.close(async () => {
-		await prisma.$disconnect();
+		await prisma.$disconnect().catch((error) => console.error('قطع اتصال دیتابیس ناموفق بود:', error));
 		process.exit(0);
 	});
 	// اگه تا ۱۰ ثانیه درخواست‌ها تموم نشدن، به‌زور ببند

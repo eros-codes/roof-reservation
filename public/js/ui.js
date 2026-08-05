@@ -7,8 +7,7 @@ export const ICONS = {
 		'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M2.8 19c.6-3.2 3-5 6.2-5s5.6 1.8 6.2 5"/><path d="M16 4.2c1.7.3 3 1.8 3 3.6s-1.3 3.3-3 3.6M21.2 19c-.4-2.4-1.6-4-3.5-4.7"/></svg>',
 	clock:
 		'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>',
-	stop:
-		'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>',
+	stop: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>',
 	table:
 		'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="8" rx="7" ry="3.2"/><path d="M5 8v4c0 1.8 3.1 3.2 7 3.2s7-1.4 7-3.2V8M12 15.2V20M8 20h8"/></svg>',
 	receipt:
@@ -140,12 +139,18 @@ export function mountHoldRing(container, expiresAt, { totalSeconds, onExpire, on
 
 /** Simple bottom-sheet controller for mobile table-detail panels. */
 export function createSheetController(panelEl) {
-	const scrim = document.createElement('div');
-	scrim.className = 'sheet-scrim';
-	document.body.appendChild(scrim);
-	const handle = document.createElement('div');
-	handle.className = 'sheet-handle';
-	panelEl.prepend(handle);
+	// محافظت در برابر فراخوانی دوباره: از scrim/handle موجود استفاده کن
+	let scrim = document.querySelector('.sheet-scrim');
+	if (!scrim) {
+		scrim = document.createElement('div');
+		scrim.className = 'sheet-scrim';
+		document.body.appendChild(scrim);
+	}
+	if (!panelEl.querySelector('.sheet-handle')) {
+		const handle = document.createElement('div');
+		handle.className = 'sheet-handle';
+		panelEl.prepend(handle);
+	}
 
 	const mobileQuery = window.matchMedia('(max-width: 860px)');
 	function isMobile() {
@@ -160,13 +165,23 @@ export function createSheetController(panelEl) {
 		panelEl.classList.remove('open');
 		scrim.classList.remove('open');
 	}
-	scrim.addEventListener('click', close);
-	window.addEventListener('resize', () => {
-		if (!isMobile()) {
-			panelEl.classList.remove('as-sheet', 'open');
-			scrim.classList.remove('open');
-		}
-	});
+	// هر controller فقط یک لیسنر close به scrim اضافه می‌کنه
+	if (!panelEl._sheetCloseAttached) {
+		scrim.addEventListener('click', close);
+		panelEl._sheetCloseAttached = true;
+	}
+	// handler resize سراسری را تنها یک‌بار نصب کن؛ هنگام تغییر به صفحه‌ی بزرگ
+	// همه‌ی sheetهای باز بسته می‌شن
+	if (!window._roofSheetResizeHandler) {
+		window._roofSheetResizeHandler = () => {
+			if (!mobileQuery.matches) {
+				document.querySelectorAll('.as-sheet.open').forEach((el) => el.classList.remove('as-sheet', 'open'));
+				const s = document.querySelector('.sheet-scrim');
+				if (s) s.classList.remove('open');
+			}
+		};
+		window.addEventListener('resize', window._roofSheetResizeHandler);
+	}
 	return { open, close };
 }
 

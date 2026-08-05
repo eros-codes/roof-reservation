@@ -22,7 +22,7 @@ if (isProd && !process.env.APP_URL) {
 		'APP_URL باید در production تنظیم شود؛ وگرنه آدرس بازگشت از درگاه پرداخت به localhost اشاره می‌کند و پرداخت‌ها هرگز تایید نمی‌شوند.',
 	);
 }
-if (isProd && process.env.APP_URL?.startsWith('http://')) {
+if (isProd && process.env.APP_URL.startsWith('http://')) {
 	console.warn('⚠️  هشدار: APP_URL روی http تنظیم شده؛ برای درگاه پرداخت و کوکی‌های secure باید https باشد.');
 }
 // حتی خارج از production هم اگه از کلید پیش‌فرض استفاده می‌شه، باید واضح دیده بشه

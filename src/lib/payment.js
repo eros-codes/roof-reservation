@@ -47,7 +47,12 @@ export async function requestZarinpalPayment({ amount, description, callbackUrl,
 		metadata: mobile ? { mobile } : undefined,
 	});
 	if (data?.data?.code !== 100 || !data.data.authority) {
-		throw new Error(data?.errors?.message || 'اتصال به درگاه پرداخت زرین‌پال ناموفق بود.');
+		// errors گاهی آبجکت و گاهی آرایه‌ست؛ هر دو حالت پوشش داده می‌شه
+		const gatewayMessage = Array.isArray(data?.errors) ? data.errors[0]?.message : data?.errors?.message;
+		const gatewayCode = Array.isArray(data?.errors) ? data.errors[0]?.code : data?.errors?.code;
+		throw new Error(
+			gatewayMessage ? `${gatewayMessage}${gatewayCode ? ` (کد ${gatewayCode})` : ''}` : 'اتصال به درگاه پرداخت زرین‌پال ناموفق بود.',
+		);
 	}
 	return {
 		authority: data.data.authority,
@@ -71,6 +76,9 @@ export async function verifyZarinpalPayment({ amount, authority }) {
 		authority,
 	});
 	const code = data?.data?.code;
+	if ((code === 100 || code === 101) && !data?.data?.ref_id) {
+		console.error('زرین‌پال تایید موفق داد ولی ref_id نفرستاد:', JSON.stringify(data));
+	}
 	return {
 		ok: code === 100 || code === 101,
 		alreadyVerified: code === 101,

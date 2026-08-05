@@ -51,31 +51,32 @@ function showHub(user) {
 
 function mountAuthWidget(mode) {
 	document.querySelectorAll('[data-auth-mode]').forEach((btn) => btn.classList.toggle('active', btn.dataset.authMode === mode));
-	if (mode === 'signup') {
-		q('authEyebrow').textContent = 'ثبت‌نام';
-		q('authTitle').textContent = 'ساخت حساب';
-		q('authLede').textContent = 'اسم و شماره موبایلت رو وارد کن تا حسابت ساخته بشه.';
-		mountOtpWidget(q('loginGateForm'), {
-			purpose: 'LOGIN',
-			extraFields: [{ key: 'name', label: 'نام (اگر حساب نداری لازم است)', required: false }],
-			submitLabel: 'ثبت‌نام',
-			onVerified: async () => {
-				await load();
-			},
-		});
-	} else {
-		q('authEyebrow').textContent = 'ورود با کد یک‌بارمصرف';
-		q('authTitle').textContent = 'حساب من';
-		q('authLede').textContent = 'با شماره موبایلت وارد شو تا رزروهات و اطلاعات حسابت رو اینجا ببینی.';
-		mountOtpWidget(q('loginGateForm'), {
-			purpose: 'LOGIN',
-			extraFields: [{ key: 'name', label: 'نام (اگر حساب نداری لازم است)', required: false }],
-			submitLabel: 'ورود',
-			onVerified: async () => {
-				await load();
-			},
-		});
-	}
+	const texts =
+		mode === 'signup'
+			? {
+					eyebrow: 'ثبت‌نام',
+					title: 'ساخت حساب',
+					lede: 'اسم و شماره موبایلت رو وارد کن تا حسابت ساخته بشه.',
+					submit: 'ثبت‌نام',
+			  }
+			: {
+					eyebrow: 'ورود با کد یک‌بارمصرف',
+					title: 'حساب من',
+					lede: 'با شماره موبایلت وارد شو تا رزروهات و اطلاعات حسابت رو اینجا ببینی.',
+					submit: 'ورود',
+			  };
+	q('authEyebrow').textContent = texts.eyebrow;
+	q('authTitle').textContent = texts.title;
+	q('authLede').textContent = texts.lede;
+	// هر دو حالت یک مسیر سروری دارند؛ تفاوتشان فقط در متن‌ها
+	mountOtpWidget(q('loginGateForm'), {
+		purpose: 'LOGIN',
+		extraFields: [{ key: 'name', label: 'نام (اگر حساب نداری لازم است)', required: false }],
+		submitLabel: texts.submit,
+		onVerified: async () => {
+			await load();
+		},
+	});
 }
 
 function showLoginGate() {
@@ -108,14 +109,24 @@ q('logoutBtn').addEventListener('click', async () => {
 
 q('saveAccountBtn').addEventListener('click', async () => {
 	const notice = q('accountNotice');
+	const name = q('accountName').value.trim();
+	if (!name) {
+		notice.className = 'notice danger';
+		notice.textContent = 'نام نمی‌تواند خالی باشد.';
+		return;
+	}
+	const btn = q('saveAccountBtn');
+	btn.disabled = true;
 	try {
-		const { user } = await api('/api/me', { method: 'PATCH', body: { name: q('accountName').value.trim() } });
+		const { user } = await api('/api/me', { method: 'PATCH', body: { name } });
 		notice.className = 'notice ok';
 		notice.textContent = 'ذخیره شد.';
 		q('hubGreeting').textContent = user.name ? `سلام ${user.name}` : 'حساب من';
 	} catch (error) {
 		notice.className = 'notice danger';
 		notice.textContent = error.message;
+	} finally {
+		btn.disabled = false;
 	}
 });
 

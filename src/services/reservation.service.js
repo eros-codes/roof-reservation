@@ -5,6 +5,7 @@ import { assertTablesAvailable } from './availability.service.js';
 import { reminderMessage, sendMockSms } from '../lib/sms.js';
 import { config } from '../config.js';
 import { createHttpError } from '../lib/http-error.js';
+import { CANCEL_WINDOW_MINUTES } from '../lib/constants.js';
 
 async function uniqueTrackingCode(client) {
 	for (let i = 0; i < 10; i++) {
@@ -140,22 +141,34 @@ export async function createManualReservation(data) {
 }
 
 export function canChangeOrCancel(reservation) {
-	const twoHoursFromNow = addMinutes(new Date(), 120);
-	return reservation.startAt > twoHoursFromNow && reservation.status === 'CONFIRMED';
+	const deadline = addMinutes(new Date(), CANCEL_WINDOW_MINUTES);
+	return reservation.startAt > deadline && reservation.status === 'CONFIRMED';
 }
 
 export async function cancelReservation(reservationId, note = '') {
 	const reservation = await getReservationFull(reservationId);
 	if (!reservation) throw new Error('رزرو پیدا نشد.');
 	if (!canChangeOrCancel(reservation)) throw new Error('لغو رزرو فقط تا ۲ ساعت قبل از شروع مجاز است.');
-	const updated = await prisma.reservation.update({
-		where: { id: reservationId },
-		data: { status: 'CANCELLED', notes: note || reservation.notes },
-	});
+	// اگر پول واقعی پرداخت شده، لغو باید بدهی بازگشت وجه را ثبت کند —
+	// مشابه رفتار مسیر لغو توسط ادمین
+	const paidReal = (reservation.payments || []).some((p) => p.status === 'PAID');
+	const [updated] = await prisma.$transaction([
+		prisma.reservation.update({
+			where: { id: reservationId },
+			data: {
+				status: 'CANCELLED',
+				notes: note || reservation.notes,
+				...(paidReal ? { refundStatus: 'PENDING' } : {}),
+			},
+		}),
+		prisma.payment.updateMany({ where: { reservationId, status: 'PAID' }, data: { status: 'REFUND_PENDING' } }),
+	]);
 	await sendMockSms({
 		phone: reservation.customerPhone,
 		type: 'CANCELLATION',
-		message: `رزرو ${reservation.trackingCode} لغو شد.`,
+		message: paidReal
+			? `رزرو ${reservation.trackingCode} لغو شد. برای بازگشت وجه با مجموعه تماس بگیرید.`
+			: `رزرو ${reservation.trackingCode} لغو شد.`,
 	}).catch((error) => console.error('SMS لغو ارسال نشد:', error));
 	return updated;
 }
@@ -190,7 +203,7 @@ export async function sendDueReminders() {
 			await sendMockSms({
 				phone: reservation.customerPhone,
 				type: 'REMINDER',
-				message: reminderMessage(reservation),
+				message: reminderMessage(reservation, reminderMinutes),
 			});
 			await prisma.reservation.update({ where: { id: reservation.id }, data: { reminderSentAt: new Date() } });
 			sent += 1;

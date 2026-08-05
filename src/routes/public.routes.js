@@ -33,6 +33,15 @@ publicRouter.get('/availability', async (req, res, next) => {
 		if (!Number.isInteger(durationMinutes) || durationMinutes < 1) {
 			return res.status(400).json({ message: 'مدت رزرو نامعتبر است.' });
 		}
+		const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+		for (const key of ['startTime', 'rangeStart', 'rangeEnd']) {
+			if (req.query[key] && !TIME_PATTERN.test(String(req.query[key]))) {
+				return res.status(400).json({ message: 'فرمت ساعت نامعتبر است.' });
+			}
+		}
+		if (req.query.rangeStart && req.query.rangeEnd && req.query.rangeStart >= req.query.rangeEnd) {
+			return res.status(400).json({ message: 'ساعت پایان بازه باید بعد از ساعت شروع باشد.' });
+		}
 		const data = await getAvailability({
 			date: req.query.date,
 			guestCount,

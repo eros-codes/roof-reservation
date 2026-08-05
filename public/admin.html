@@ -68,6 +68,13 @@
 								<label>میز (برای ترکیبی، بیش از یکی انتخاب کن)</label>
 								<div id="mTables" class="chip-row"></div>
 							</div>
+							<div class="field">
+								<label class="checkbox-row"><input type="checkbox" id="mDecoration" /> <span>تزئین میز</span></label>
+							</div>
+							<div class="field" id="mDecorationNoteField" hidden>
+								<label for="mDecorationNote">چه تزئینی؟ (اختیاری)</label>
+								<input id="mDecorationNote" maxlength="200" />
+							</div>
 							<button id="createManual" class="primary-btn">ثبت رزرو دستی</button>
 							<div id="manualNotice"></div>
 						</div>
@@ -108,7 +115,9 @@
 								<div class="field"><label>ایمیل</label><input id="aEmail" type="email" autocomplete="off" /></div>
 							</div>
 							<div class="row">
-								<div class="field"><label>رمز عبور (حداقل ۸ کاراکتر)</label><input id="aPassword" type="password" autocomplete="new-password" /></div>
+								<div class="field">
+									<label>رمز عبور (حداقل ۸ کاراکتر)</label><input id="aPassword" type="password" autocomplete="new-password" />
+								</div>
 								<div class="field">
 									<label>نقش</label>
 									<select id="aRole">

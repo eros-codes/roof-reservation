@@ -38,6 +38,12 @@ export function notConfirmedMessage(reservation) {
 	return `رزرو ${reservation.trackingCode} تایید نشد، لطفاً با مجموعه تماس بگیرید.`;
 }
 
-export function reminderMessage(reservation) {
-	return `یادآوری Roof: رزرو شما تا ۳ ساعت دیگر شروع می‌شود. کد: ${reservation.trackingCode}`;
+export function reminderMessage(reservation, minutesBefore = null) {
+	// متن از روی تنظیم واقعی ساخته می‌شه، نه عدد ثابت
+	const when = Number.isFinite(minutesBefore)
+		? minutesBefore >= 60
+			? `${Math.round(minutesBefore / 60).toLocaleString('fa-IR')} ساعت`
+			: `${Math.round(minutesBefore).toLocaleString('fa-IR')} دقیقه`
+		: 'کمی';
+	return `یادآوری Roof: رزرو شما تا ${when} دیگر شروع می‌شود. کد: ${reservation.trackingCode}`;
 }
